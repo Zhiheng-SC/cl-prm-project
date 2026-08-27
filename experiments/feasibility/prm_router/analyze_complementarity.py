@@ -311,8 +311,8 @@ def main() -> None:
     # Default threshold used by the original ReasonEval run.
     analyze_threshold(pairs, disprm_threshold=0.50)
 
-    # Exploratory threshold selected on this smoke-test set.
-    # This is diagnostic only and must not be reported as an unbiased result.
+    # Exploratory threshold selected during the separate 20-example pilot.
+    # It remains fixed when analyzing the 100-example feasibility subset.
     analyze_threshold(pairs, disprm_threshold=0.96)
 
 

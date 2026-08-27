@@ -117,7 +117,7 @@ def generate_analysis(
     prompt: str,
     max_new_tokens: int,
     max_input_tokens: int,
-) -> tuple[str, int, int]:
+) -> tuple[str, int, int, bool]:
     encoded = tokenizer(prompt, return_tensors="pt")
     input_tokens = encoded["input_ids"].shape[1]
 
@@ -157,13 +157,20 @@ def generate_analysis(
     new_ids = generated[0, input_tokens:]
     analysis = tokenizer.decode(new_ids, skip_special_tokens=True)
 
-    if "</analyze>" in analysis:
+    analysis_complete = "</analyze>" in analysis
+
+    if analysis_complete:
         analysis = analysis.split("</analyze>", maxsplit=1)[0]
         analysis = analysis.rstrip() + "\n</analyze>\n"
     else:
         analysis = analysis.rstrip() + "\n</analyze>\n"
 
-    return analysis, input_tokens, int(new_ids.shape[0])
+    return (
+        analysis,
+        input_tokens,
+        int(new_ids.shape[0]),
+        analysis_complete,
+    )
 
 
 def generate_judgement(
@@ -229,7 +236,12 @@ def run_one(
     torch.cuda.synchronize()
     start_time = time.perf_counter()
 
-    analysis, input_tokens, analysis_tokens = generate_analysis(
+    (
+        analysis,
+        input_tokens,
+        analysis_tokens,
+        analysis_complete,
+    ) = generate_analysis(
         model=model,
         tokenizer=tokenizer,
         prompt=prompt,
@@ -249,6 +261,13 @@ def run_one(
     match = re.search(r"\b(Yes|No)\b", judgement, flags=re.IGNORECASE)
     parsed_judgement = match.group(1).capitalize() if match else "Unknown"
 
+    if parsed_judgement == "Unknown":
+        raise ValueError(
+            "Could not parse a Yes/No judgement for "
+            f"example {record['example_id']!r}. "
+            f"Generated text: {judgement!r}"
+        )
+
     prediction = int(yes_probability >= 0.5)
     label = int(record["label"])
 
@@ -258,6 +277,7 @@ def run_one(
             "genprm_model": args.model,
             "genprm_current_step": current_step,
             "genprm_analysis": analysis,
+            "genprm_analysis_complete": analysis_complete,
             "genprm_judgement_text": judgement,
             "genprm_parsed_judgement": parsed_judgement,
             "genprm_score": yes_probability,

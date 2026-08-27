@@ -1,8 +1,7 @@
-"""Prepare a small balanced step-level subset from PRMBench.
+"""Prepare a balanced step-level subset from PRMBench.
 
-The script creates:
-- 10 correct step prefixes
-- 10 erroneous step prefixes
+The numbers of correct and erroneous step prefixes are configured through
+command-line arguments.
 
 For erroneous examples, we select the first annotated error step.
 For correct examples, we select a step before the first error, so that
