@@ -133,6 +133,22 @@ The initial lightweight router uses:
 
 The model is logistic regression with feature standardization and class-balanced training.
 
+## Environment Setup
+
+The experiments used Python 3.10.
+
+Install the PyTorch build appropriate for the local CUDA version first. For the Windows CUDA 12.4 environment used in this feasibility study:
+
+```bash
+pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+```
+
+Then install the remaining dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
 ## Reproduction
 
 ### Prepare the feasibility subset
