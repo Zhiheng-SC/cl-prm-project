@@ -28,14 +28,14 @@ DEFAULT_DISPRM = (
     REPO_ROOT
     / "outputs"
     / "prm_router"
-    / "reasoneval_feasibility_100.json"
+    / "reasoneval_feasibility_100.jsonl"
 )
 
 DEFAULT_GENPRM = (
     REPO_ROOT
     / "outputs"
     / "prm_router"
-    / "genprm_feasibility_100.json"
+    / "genprm_feasibility_100.jsonl"
 )
 
 DEFAULT_OUTPUT = (

@@ -160,19 +160,19 @@ python experiments/feasibility/prm_router/prepare_subset.py --n-correct 50 --n-e
 ### Run ReasonEval
 
 ```bash
-python experiments/feasibility/prm_router/run_disprm.py --input data/prm_router/feasibility_100.jsonl --output outputs/prm_router/reasoneval_feasibility_100.json --limit 100
+python experiments/feasibility/prm_router/run_disprm.py --input data/prm_router/feasibility_100.jsonl --output outputs/prm_router/reasoneval_feasibility_100.jsonl --limit 100
 ```
 
 ### Run GenPRM
 
 ```bash
-python experiments/feasibility/prm_router/run_genprm.py --input data/prm_router/feasibility_100.jsonl --output outputs/prm_router/genprm_feasibility_100.json --limit 100 --max-input-tokens 4096
+python experiments/feasibility/prm_router/run_genprm.py --input data/prm_router/feasibility_100.jsonl --output outputs/prm_router/genprm_feasibility_100.jsonl --limit 100 --max-input-tokens 4096
 ```
 
 ### Analyze verifier complementarity
 
 ```bash
-python experiments/feasibility/prm_router/analyze_complementarity.py --disprm outputs/prm_router/reasoneval_feasibility_100.json --genprm outputs/prm_router/genprm_feasibility_100.json
+python experiments/feasibility/prm_router/analyze_complementarity.py --disprm outputs/prm_router/reasoneval_feasibility_100.jsonl --genprm outputs/prm_router/genprm_feasibility_100.jsonl
 ```
 
 ### Evaluate heuristic routing

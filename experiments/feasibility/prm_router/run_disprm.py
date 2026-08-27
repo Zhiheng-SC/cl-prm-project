@@ -170,6 +170,7 @@ def evaluate_record(
     model,
     tokenizer,
     record: dict,
+    model_name: str,
 ) -> dict:
     """Evaluate the current step of one PRMBench record."""
     question = record["question"]
@@ -225,7 +226,7 @@ def evaluate_record(
 
     result.update(
         {
-            "disprm_model": DEFAULT_MODEL,
+            "disprm_model": model_name,
             "disprm_probability_negative": probability_negative,
             "disprm_probability_neutral": probability_neutral,
             "disprm_probability_positive": probability_positive,
@@ -332,6 +333,7 @@ def main() -> None:
                 model=model,
                 tokenizer=tokenizer,
                 record=record,
+                model_name=args.model,
             )
 
             correct_count += int(result["disprm_correct"])
