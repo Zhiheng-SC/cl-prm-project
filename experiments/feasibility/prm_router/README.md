@@ -80,7 +80,8 @@ experiments/feasibility/prm_router/
 ├── analyze_complementarity.py
 ├── evaluate_routing.py
 ├── train_benefit_router.py
-└── analyze_threshold_sensitivity.py
+├── analyze_threshold_sensitivity.py
+└── analyze_grouped_cv.py
 ```
 
 | File                               | Purpose                                                                              |
@@ -92,6 +93,7 @@ experiments/feasibility/prm_router/
 | `evaluate_routing.py`              | Evaluate random, low-score, uncertainty, and oracle routing                          |
 | `train_benefit_router.py`          | Train and evaluate a logistic-regression benefit router with out-of-fold predictions |
 | `analyze_threshold_sensitivity.py` | Repeat out-of-fold routing evaluation across multiple DisPRM thresholds              |
+| `analyze_grouped_cv.py`            | Compare standard and original-question-grouped out-of-fold router evaluation         |
 
 ## Experimental Pipeline
 
@@ -195,6 +197,13 @@ python experiments/feasibility/prm_router/train_benefit_router.py
 
 ```bash
 python experiments/feasibility/prm_router/analyze_threshold_sensitivity.py
+```
+
+### Analyze original-question-grouped cross-validation
+
+```bash
+python experiments/feasibility/prm_router/analyze_grouped_cv.py
+```
 
 ## Preliminary Results
 
@@ -316,6 +325,21 @@ Verifier complementarity persists across all tested thresholds: every threshold 
 At a 20% budget, the learned router improves over the corresponding DisPRM-only baseline at all six thresholds. It outperforms uncertainty routing at four of the six thresholds, but is lower by `0.01` at thresholds `0.80` and `0.90`. Therefore, the existence of useful routing opportunities appears robust, while the magnitude of the learned router's advantage remains threshold-sensitive.
 
 The threshold `0.96` was selected using the separate 20-example pilot subset before evaluating the 100-example feasibility subset. It was not selected by optimizing performance on these 100 examples. This sensitivity sweep is diagnostic and does not replace a final held-out evaluation.
+
+## Original-Question Grouped Evaluation
+
+The 100-example subset contains `96` unique original-question groups. Four original questions occur twice, accounting for eight records. Under the original `StratifiedKFold` evaluation, three of these four duplicated groups were split across training and test folds.
+
+The router was therefore reevaluated using `StratifiedGroupKFold`, with normalized PRMBench `original_question` text as the group identifier. This ensures that all variants of the same original problem remain in the same fold.
+
+| Evaluation method | Duplicated groups split across folds | ROC-AUC | Average precision | Learned accuracy at 10% | Learned accuracy at 20% | Learned accuracy at 30% |
+|---|---:|---:|---:|---:|---:|---:|
+| Standard stratified OOF | 3 | 0.903 | 0.814 | 0.73 | 0.79 | 0.81 |
+| Grouped by original question | 0 | 0.899 | 0.780 | 0.72 | 0.78 | 0.80 |
+
+Removing all detected cross-fold original-question overlap reduces the learned router's accuracy by only `0.01` at each tested budget. At the 20% budget, grouped routing still achieves `0.78`, compared with `0.67` for uncertainty routing and `0.66` for the DisPRM-only baseline.
+
+This suggests that the preliminary benefit-prediction signal is not primarily explained by duplicated-question leakage. However, grouped out-of-fold evaluation on the same 100 examples is still not equivalent to evaluation on a separate held-out dataset.
 
 ## Preliminary Interpretation
 
