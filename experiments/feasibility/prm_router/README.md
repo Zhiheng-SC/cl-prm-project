@@ -79,17 +79,19 @@ experiments/feasibility/prm_router/
 ├── run_genprm.py
 ├── analyze_complementarity.py
 ├── evaluate_routing.py
-└── train_benefit_router.py
+├── train_benefit_router.py
+└── analyze_threshold_sensitivity.py
 ```
 
-| File                         | Purpose                                                                              |
-| ---------------------------- | ------------------------------------------------------------------------------------ |
-| `prepare_subset.py`          | Create balanced PRMBench step-prefix subsets                                         |
-| `run_disprm.py`              | Run ReasonEval and save its scores and predictions                                   |
-| `run_genprm.py`              | Run the Windows-compatible GenPRM feasibility inference                              |
-| `analyze_complementarity.py` | Identify beneficial, harmful, and shared verifier outcomes                           |
-| `evaluate_routing.py`        | Evaluate random, low-score, uncertainty, and oracle routing                          |
-| `train_benefit_router.py`    | Train and evaluate a logistic-regression benefit router with out-of-fold predictions |
+| File                               | Purpose                                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------------------ |
+| `prepare_subset.py`                | Create balanced PRMBench step-prefix subsets                                         |
+| `run_disprm.py`                    | Run ReasonEval and save its scores and predictions                                   |
+| `run_genprm.py`                    | Run the Windows-compatible GenPRM feasibility inference                              |
+| `analyze_complementarity.py`       | Identify beneficial, harmful, and shared verifier outcomes                           |
+| `evaluate_routing.py`              | Evaluate random, low-score, uncertainty, and oracle routing                          |
+| `train_benefit_router.py`          | Train and evaluate a logistic-regression benefit router with out-of-fold predictions |
+| `analyze_threshold_sensitivity.py` | Repeat out-of-fold routing evaluation across multiple DisPRM thresholds              |
 
 ## Experimental Pipeline
 
@@ -188,6 +190,11 @@ python experiments/feasibility/prm_router/evaluate_routing.py
 ```bash
 python experiments/feasibility/prm_router/train_benefit_router.py
 ```
+
+### Analyze DisPRM threshold sensitivity
+
+```bash
+python experiments/feasibility/prm_router/analyze_threshold_sensitivity.py
 
 ## Preliminary Results
 
@@ -290,6 +297,25 @@ At a 20% GenPRM budget, the learned router obtains an accuracy of `0.79`, compar
 At this budget, the learned router selects 16 beneficial calls and only 3 harmful calls.
 
 The best observed learned-routing accuracy is `0.82` at a 50% GenPRM budget. The non-monotonic budget curve is expected because additional GenPRM calls may include harmful replacements.
+
+## DisPRM Threshold Sensitivity
+
+To test whether the routing result depends excessively on the DisPRM decision threshold, the complete out-of-fold router evaluation was repeated at six thresholds. The table below reports routing accuracy under a 20% GenPRM-call budget.
+
+| DisPRM threshold | DisPRM only | Beneficial / harmful calls | Router ROC-AUC | Average precision | Learned routing | Uncertainty routing | Random routing | Oracle |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0.50 | 0.63 | 20 / 9 | 0.873 | 0.691 | 0.75 | 0.71 | 0.652 | 0.83 |
+| 0.80 | 0.74 | 10 / 10 | 0.617 | 0.153 | 0.75 | 0.76 | 0.740 | 0.84 |
+| 0.90 | 0.69 | 17 / 12 | 0.833 | 0.539 | 0.76 | 0.77 | 0.701 | 0.86 |
+| 0.95 | 0.71 | 20 / 17 | 0.854 | 0.629 | 0.76 | 0.69 | 0.717 | 0.91 |
+| 0.96 | 0.66 | 26 / 18 | 0.903 | 0.814 | 0.79 | 0.67 | 0.675 | 0.92 |
+| 0.98 | 0.59 | 32 / 17 | 0.856 | 0.670 | 0.71 | 0.64 | 0.620 | 0.91 |
+
+Verifier complementarity persists across all tested thresholds: every threshold produces beneficial GenPRM calls, and the oracle-routing accuracy ranges from `0.83` to `0.92`.
+
+At a 20% budget, the learned router improves over the corresponding DisPRM-only baseline at all six thresholds. It outperforms uncertainty routing at four of the six thresholds, but is lower by `0.01` at thresholds `0.80` and `0.90`. Therefore, the existence of useful routing opportunities appears robust, while the magnitude of the learned router's advantage remains threshold-sensitive.
+
+The threshold `0.96` was selected using the separate 20-example pilot subset before evaluating the 100-example feasibility subset. It was not selected by optimizing performance on these 100 examples. This sensitivity sweep is diagnostic and does not replace a final held-out evaluation.
 
 ## Preliminary Interpretation
 
