@@ -216,3 +216,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# CL-PRM project data and generated outputs
+data/*
+!data/README.md
+outputs/*
+!outputs/README.md
+
+# Model checkpoints and weights
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Operating system files
+.DS_Store
+Thumbs.db
