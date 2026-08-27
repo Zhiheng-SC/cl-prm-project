@@ -269,6 +269,10 @@ def run_one(
         )
 
     prediction = int(yes_probability >= 0.5)
+    probability_judgement = "Yes" if prediction == 1 else "No"
+    judgement_matches_prediction = (
+        parsed_judgement == probability_judgement
+    )
     label = int(record["label"])
 
     result = dict(record)
@@ -280,6 +284,10 @@ def run_one(
             "genprm_analysis_complete": analysis_complete,
             "genprm_judgement_text": judgement,
             "genprm_parsed_judgement": parsed_judgement,
+            "genprm_probability_judgement": probability_judgement,
+            "genprm_judgement_matches_prediction": (
+                judgement_matches_prediction
+            ),
             "genprm_score": yes_probability,
             "genprm_prediction": prediction,
             "genprm_correct": prediction == label,

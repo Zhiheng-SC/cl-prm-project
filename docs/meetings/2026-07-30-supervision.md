@@ -1,4 +1,4 @@
-# Supervision Meeting ¡ª 2026-07-30
+# Supervision Meeting â€” 2026-07-30
 
 ## Discussed Proposals
 
