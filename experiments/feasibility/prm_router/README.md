@@ -38,6 +38,8 @@ The default threshold of `0.50` was poorly calibrated on the pilot set. A diagno
 
 ### Generative PRM
 
+* Final prediction: normalized `Yes/No` probability with threshold `0.50`
+* The sampled judgement text is stored separately from the probability-based prediction
 * Model: `GenPRM/GenPRM-1.5B`
 * Output: generated analysis followed by a `Yes/No` judgement
 * Number of generations: one per example
@@ -160,7 +162,7 @@ python experiments/feasibility/prm_router/prepare_subset.py --n-correct 50 --n-e
 ### Run ReasonEval
 
 ```bash
-python experiments/feasibility/prm_router/run_disprm.py --input data/prm_router/feasibility_100.jsonl --output outputs/prm_router/reasoneval_feasibility_100.jsonl --limit 100
+python experiments/feasibility/prm_router/run_disprm.py --input data/prm_router/feasibility_100.jsonl --output outputs/prm_router/reasoneval_feasibility_100.jsonl --limit 100 --threshold 0.96
 ```
 
 ### Run GenPRM
@@ -320,6 +322,7 @@ A separate held-out evaluation is not required to make the project-selection dec
 
 ## Limitations
 
+* In 5 of 100 feasibility examples, the sampled judgement text differed from the probability-based prediction. Reported accuracy uses the probability-based prediction.
 * The feasibility experiment contains only 100 balanced examples.
 * The class distribution does not represent the natural PRMBench distribution.
 * Router performance is based on out-of-fold predictions rather than a separate held-out dataset.

@@ -171,6 +171,7 @@ def evaluate_record(
     tokenizer,
     record: dict,
     model_name: str,
+    threshold: float,
 ) -> dict:
     """Evaluate the current step of one PRMBench record."""
     question = record["question"]
@@ -219,7 +220,7 @@ def evaluate_record(
     probability_positive = float(probabilities[2])
 
     validity_score = probability_neutral + probability_positive
-    prediction = int(validity_score >= 0.5)
+    prediction = int(validity_score >= threshold)
     ground_truth = int(record["label"])
 
     result = dict(record)
@@ -227,6 +228,7 @@ def evaluate_record(
     result.update(
         {
             "disprm_model": model_name,
+            "disprm_threshold": threshold,
             "disprm_probability_negative": probability_negative,
             "disprm_probability_neutral": probability_neutral,
             "disprm_probability_positive": probability_positive,
@@ -260,6 +262,12 @@ def main() -> None:
         "--model",
         type=str,
         default=DEFAULT_MODEL,
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.5,
+        help="Decision threshold for the DisPRM validity score.",
     )
     parser.add_argument(
         "--limit",
@@ -334,6 +342,7 @@ def main() -> None:
                 tokenizer=tokenizer,
                 record=record,
                 model_name=args.model,
+                threshold=args.threshold,
             )
 
             correct_count += int(result["disprm_correct"])

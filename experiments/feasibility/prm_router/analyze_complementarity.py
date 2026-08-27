@@ -257,6 +257,26 @@ def main() -> None:
         for _, gen_row in pairs
     )
 
+    judgement_mapping = {"Yes": 1, "No": 0}
+
+    judgement_prediction_mismatches = sum(
+        judgement_mapping.get(
+            gen_row["genprm_parsed_judgement"]
+        )
+        != int(gen_row["genprm_prediction"])
+        for _, gen_row in pairs
+        if gen_row["genprm_parsed_judgement"] in judgement_mapping
+    )
+
+    judgement_prediction_mismatches = sum(
+        judgement_mapping.get(
+            gen_row["genprm_parsed_judgement"]
+        )
+        != int(gen_row["genprm_prediction"])
+        for _, gen_row in pairs
+        if gen_row["genprm_parsed_judgement"] in judgement_mapping
+    )
+
     gen_scores = [
         float(gen_row["genprm_score"])
         for _, gen_row in pairs
@@ -275,9 +295,13 @@ def main() -> None:
     print(f"Paired examples: {len(pairs)}")
     print()
 
-    print("GenPRM judgement parsing:")
+    print("GenPRM sampled judgement parsing:")
     for judgement, count in sorted(parsed_judgements.items()):
         print(f"  {judgement}: {count}")
+    print(
+        "  Sampled/probability mismatches: "
+        f"{judgement_prediction_mismatches}"
+    )
     print()
 
     print("GenPRM scores:")
