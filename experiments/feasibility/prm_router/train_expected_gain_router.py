@@ -1,8 +1,8 @@
 """Evaluate a harm-aware expected-gain router with grouped OOF predictions.
 
-This script reuses saved ReasonEval and GenPRM outputs. It does not run either
-language model. It compares the existing binary benefit-only router with a
-three-class router that predicts beneficial, neutral, and harmful GenPRM calls.
+This script reuses saved ReasonEval and second-stage verifier outputs. It does
+not run either verifier. It compares a binary benefit-only router with a
+three-class router that predicts beneficial, neutral, and harmful calls.
 """
 
 from __future__ import annotations
@@ -63,6 +63,21 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--disprm", type=Path, default=DEFAULT_DISPRM)
     parser.add_argument("--genprm", type=Path, default=DEFAULT_GENPRM)
+    parser.add_argument(
+        "--second-stage",
+        type=Path,
+        default=None,
+        help=(
+            "Optional second-stage verifier output. "
+            "Overrides --genprm when supplied."
+        ),
+    )
+    parser.add_argument(
+        "--second-stage-kind",
+        choices=("genprm", "pathfinder"),
+        default="genprm",
+        help="Schema used by the second-stage verifier output.",
+    )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--dataset", type=str, default=DATASET_NAME)
     parser.add_argument("--split", type=str, default=None)
@@ -124,14 +139,36 @@ def main() -> None:
     args = parse_args()
     validate_args(args)
 
+    second_stage_path = (
+        args.second_stage
+        if args.second_stage is not None
+        else args.genprm
+    )
+
+    if args.second_stage_kind == "genprm":
+        second_stage_name = "GenPRM"
+        prediction_field = "genprm_prediction"
+        runtime_field = "genprm_runtime_seconds"
+    else:
+        second_stage_name = "PathFinder"
+        prediction_field = "pathfinder_prediction"
+        runtime_field = "pathfinder_runtime_seconds"
+
     dis_records = index_records(read_records(args.disprm), "DisPRM")
-    gen_records = index_records(read_records(args.genprm), "GenPRM")
+    gen_records = index_records(
+        read_records(second_stage_path),
+        second_stage_name,
+    )
     common_keys = sorted(set(dis_records) & set(gen_records))
 
     if len(common_keys) != len(dis_records):
-        raise ValueError("Some DisPRM records have no GenPRM match.")
+        raise ValueError(
+            f"Some DisPRM records have no {second_stage_name} match."
+        )
     if len(common_keys) != len(gen_records):
-        raise ValueError("Some GenPRM records have no DisPRM match.")
+        raise ValueError(
+            f"Some {second_stage_name} records have no DisPRM match."
+        )
 
     ordered_dis_records = [dis_records[key] for key in common_keys]
     ordered_gen_records = [gen_records[key] for key in common_keys]
@@ -152,7 +189,9 @@ def main() -> None:
         dtype=np.int64,
     )
     if not np.array_equal(labels, gen_labels):
-        raise ValueError("DisPRM and GenPRM labels do not match.")
+        raise ValueError(
+            f"DisPRM and {second_stage_name} labels do not match."
+        )
 
     dis_scores = np.asarray(
         [float(record["disprm_score"]) for record in ordered_dis_records],
@@ -161,7 +200,7 @@ def main() -> None:
     dis_predictions = (dis_scores >= args.threshold).astype(np.int64)
     gen_predictions = np.asarray(
         [
-            int(record["genprm_prediction"])
+            int(record[prediction_field])
             for record in ordered_gen_records
         ],
         dtype=np.int64,
@@ -294,7 +333,7 @@ def main() -> None:
         for record in ordered_dis_records
     )
     gen_runtime = mean(
-        float(record["genprm_runtime_seconds"])
+        float(record[runtime_field])
         for record in ordered_gen_records
     )
 
@@ -365,8 +404,14 @@ def main() -> None:
             + min(budget, len(beneficial_indices)) / total
         )
         cost_ratio = (
-            dis_runtime + (budget / total) * gen_runtime
-        ) / dis_runtime
+            (
+                dis_runtime
+                + (budget / total) * gen_runtime
+            )
+            / dis_runtime
+            if args.second_stage_kind == "genprm"
+            else None
+        )
 
         result = {
             "budget_percent": budget_percent,
@@ -389,6 +434,12 @@ def main() -> None:
             f"{result['random_accuracy_mean']:.3f}"
             f"+/-{result['random_accuracy_std']:.3f}"
         )
+        cost_text = (
+            f"{cost_ratio:.2f}x"
+            if cost_ratio is not None
+            else "n/a"
+        )
+
         print(
             f"{budget_percent:>5}% | "
             f"{expected_accuracy:>13.3f} | "
@@ -398,7 +449,7 @@ def main() -> None:
             f"{oracle_accuracy:>6.3f} | "
             f"{expected_beneficial:02d}/{expected_harmful:02d} | "
             f"{benefit_beneficial:02d}/{benefit_harmful:02d} | "
-            f"{cost_ratio:>4.2f}x"
+            f"{cost_text:>5}"
         )
 
     output_records = []
@@ -411,7 +462,9 @@ def main() -> None:
                 "fold": int(fold_ids[index]),
                 "disprm_score": float(dis_scores[index]),
                 "disprm_prediction": int(dis_predictions[index]),
-                "genprm_prediction": int(gen_predictions[index]),
+                "second_stage_prediction": int(
+                    gen_predictions[index]
+                ),
                 "gain_label": int(gain_labels[index]),
                 "probability_harmful": float(harm_probability[index]),
                 "probability_neutral": float(neutral_probability[index]),
@@ -426,7 +479,13 @@ def main() -> None:
     output = {
         "config": {
             "disprm": str(args.disprm),
-            "genprm": str(args.genprm),
+            "genprm": (
+                str(second_stage_path)
+                if args.second_stage_kind == "genprm"
+                else None
+            ),
+            "second_stage": str(second_stage_path),
+            "second_stage_kind": args.second_stage_kind,
             "dataset": args.dataset,
             "dataset_split": split_name,
             "threshold": args.threshold,
