@@ -43,22 +43,29 @@ Proposal and feasibility notes:
 
 ### PRM Router
 
-The PRM Router direction studies whether a fast discriminative PRM can be combined with a slower generative PRM through budget-aware routing.
+The PRM Router direction studies budget-aware composition of complementary process verifiers.
 
-The current feasibility experiment includes:
+The current primary candidate is:
+
+`ReasonEval -> expected-gain router -> PathFinder -> optional trust arbitration`
+
+GenPRM was evaluated as an alternative second-stage verifier and is retained as a comparison baseline.
+
+The completed feasibility study includes:
 
 * balanced PRMBench subset preparation;
-* ReasonEval inference;
-* GenPRM inference;
+* ReasonEval, GenPRM, and PathFinder inference;
 * verifier complementarity analysis;
-* heuristic routing baselines;
-* a lightweight logistic-regression benefit router.
+* random and uncertainty-routing baselines;
+* grouped out-of-fold benefit and expected-gain routers;
+* DisPRM threshold sensitivity and grouped leakage checks;
+* post-call trust arbitration;
+* explicit pilot limitations and a held-out evaluation plan.
 
 See:
 
 * [PRM Router Proposal](docs/proposals/prm_router.md)
 * [PRM Router Feasibility](experiments/feasibility/prm_router/README.md)
-
 ### StepBADGE
 
 Proposal and feasibility notes:

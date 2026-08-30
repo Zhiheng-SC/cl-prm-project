@@ -29,6 +29,7 @@ DEFAULT_OUTPUT = (
     REPO_ROOT
     / "outputs"
     / "prm_router"
+    / "pathfinder"
     / "pathfinder_feasibility_100.jsonl"
 )
 
@@ -81,7 +82,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--attention-implementation",
         choices=["sdpa", "flash_attention_2", "eager"],
-        default="sdpa",
+        default="flash_attention_2",
+        help=(
+            "Attention backend. The official feasibility run used "
+            "flash_attention_2; sdpa and eager are diagnostic alternatives."
+        ),
     )
     return parser.parse_args()
 
@@ -378,6 +383,9 @@ def run_one(
     result.update(
         {
             "pathfinder_model": args.model,
+            "pathfinder_attention_implementation": (
+                args.attention_implementation
+            ),
             "pathfinder_math_probability": math_probability,
             "pathfinder_math_prediction": math_prediction,
             "pathfinder_consistency_probability": (
@@ -532,7 +540,8 @@ def load_model(args: argparse.Namespace):
         if not torch.cuda.is_available():
             raise RuntimeError(
                 "Full-precision PathFinder inference requires a CUDA GPU. "
-                "Use --dry-run locally or run this mode on the A100 server."
+                "Use --dry-run locally or run this mode on a Linux CUDA "
+                "server GPU."
             )
         model_kwargs["torch_dtype"] = torch.bfloat16
 
