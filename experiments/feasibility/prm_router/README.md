@@ -81,19 +81,21 @@ experiments/feasibility/prm_router/
 ├── evaluate_routing.py
 ├── train_benefit_router.py
 ├── analyze_threshold_sensitivity.py
-└── analyze_grouped_cv.py
+├── analyze_grouped_cv.py
+└── train_expected_gain_router.py
 ```
 
-| File                               | Purpose                                                                              |
-| ---------------------------------- | ------------------------------------------------------------------------------------ |
-| `prepare_subset.py`                | Create balanced PRMBench step-prefix subsets                                         |
-| `run_disprm.py`                    | Run ReasonEval and save its scores and predictions                                   |
-| `run_genprm.py`                    | Run the Windows-compatible GenPRM feasibility inference                              |
-| `analyze_complementarity.py`       | Identify beneficial, harmful, and shared verifier outcomes                           |
-| `evaluate_routing.py`              | Evaluate random, low-score, uncertainty, and oracle routing                          |
-| `train_benefit_router.py`          | Train and evaluate a logistic-regression benefit router with out-of-fold predictions |
-| `analyze_threshold_sensitivity.py` | Repeat out-of-fold routing evaluation across multiple DisPRM thresholds              |
-| `analyze_grouped_cv.py`            | Compare standard and original-question-grouped out-of-fold router evaluation         |
+| File                               | Purpose                                                                                |
+| ---------------------------------- | -------------------------------------------------------------------------------------- |
+| `prepare_subset.py`                | Create balanced PRMBench step-prefix subsets                                           |
+| `run_disprm.py`                    | Run ReasonEval and save its scores and predictions                                     |
+| `run_genprm.py`                    | Run the Windows-compatible GenPRM feasibility inference                                |
+| `analyze_complementarity.py`       | Identify beneficial, harmful, and shared verifier outcomes                             |
+| `evaluate_routing.py`              | Evaluate random, low-score, uncertainty, and oracle routing                            |
+| `train_benefit_router.py`          | Train and evaluate a logistic-regression benefit router with out-of-fold predictions   |
+| `analyze_threshold_sensitivity.py` | Repeat out-of-fold routing evaluation across multiple DisPRM thresholds                |
+| `analyze_grouped_cv.py`            | Compare standard and original-question-grouped out-of-fold router evaluation           |
+| `train_expected_gain_router.py`    | Compare benefit-only and harm-aware expected-gain routing with grouped OOF predictions |
 
 ## Experimental Pipeline
 
@@ -191,6 +193,12 @@ python experiments/feasibility/prm_router/evaluate_routing.py
 
 ```bash
 python experiments/feasibility/prm_router/train_benefit_router.py
+```
+
+### Train the harm-aware expected-gain router
+
+```bash
+python experiments/feasibility/prm_router/train_expected_gain_router.py
 ```
 
 ### Analyze DisPRM threshold sensitivity
@@ -340,6 +348,46 @@ The router was therefore reevaluated using `StratifiedGroupKFold`, with normaliz
 Removing all detected cross-fold original-question overlap reduces the learned router's accuracy by only `0.01` at each tested budget. At the 20% budget, grouped routing still achieves `0.78`, compared with `0.67` for uncertainty routing and `0.66` for the DisPRM-only baseline.
 
 This suggests that the preliminary benefit-prediction signal is not primarily explained by duplicated-question leakage. However, grouped out-of-fold evaluation on the same 100 examples is still not equivalent to evaluation on a separate held-out dataset.
+
+## Harm-Aware Expected-Gain Extension
+
+A three-class router was evaluated to distinguish beneficial, neutral, and harmful GenPRM calls:
+
+```text
++1 = DisPRM is wrong and GenPRM is correct
+ 0 = both verifiers have the same correctness
+-1 = DisPRM is correct and GenPRM is wrong
+```
+
+The routing score is defined as:
+
+```text
+expected gain = P(beneficial) - P(harmful)
+```
+
+The expected-gain router and the original benefit-only router were evaluated using the same five original-question-grouped out-of-fold splits.
+
+| Metric | Result |
+|---|---:|
+| Beneficial calls | 26 |
+| Neutral calls | 56 |
+| Harmful calls | 18 |
+| Benefit-only benefit AP | 0.7481 |
+| Expected-gain benefit AP | 0.7329 |
+| Expected-gain harm AP | 0.2926 |
+| Random harm AP baseline | 0.1800 |
+
+| GenPRM budget | Expected-gain router | Benefit-only router | Expected gain B/H | Benefit only B/H |
+|---:|---:|---:|---:|---:|
+| 10% | 0.72 | 0.73 | 8 / 2 | 8 / 1 |
+| 20% | 0.78 | 0.78 | 14 / 2 | 15 / 3 |
+| 30% | 0.78 | 0.80 | 17 / 5 | 19 / 5 |
+| 40% | 0.82 | 0.82 | 21 / 5 | 23 / 7 |
+| 50% | 0.81 | 0.80 | 22 / 7 | 24 / 10 |
+
+The harm-aware router detects harmful calls above the random baseline and sometimes selects fewer harmful calls. However, it does not consistently improve routing accuracy over the benefit-only router because avoiding harmful calls may also exclude beneficial calls.
+
+This result suggests that changing the prediction target alone is insufficient. More informative error-specific features, such as separate mathematical-correctness and logical-consistency signals, may be required to predict harmful GenPRM calls reliably. This motivates the proposed PathFinder-PRM extension.
 
 ## Preliminary Interpretation
 
