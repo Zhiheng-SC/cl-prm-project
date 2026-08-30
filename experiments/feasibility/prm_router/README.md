@@ -2,18 +2,18 @@
 
 ## Status
 
-**Feasibility decision: passed.**
+**Feasibility decision: passed. Final team selection is pending.**
 
 This preliminary study confirms that:
 
-1. the complete DisPRM–GenPRM inference pipeline is runnable;
-2. the two verifiers make complementary errors;
-3. invoking GenPRM can be either beneficial or harmful;
-4. simple uncertainty routing leaves substantial room for improvement;
-5. a lightweight logistic-regression router can learn a useful benefit signal in an out-of-fold feasibility evaluation.
+1. ReasonEval, GenPRM, and PathFinder inference pipelines are runnable.
+2. ReasonEval and PathFinder exhibit meaningful complementary errors.
+3. PathFinder is the strongest second-stage candidate in the current pilot.
+4. A lightweight expected-gain router can identify beneficial calls.
+5. Post-call trust arbitration can detect many harmful replacements.
+6. Random and uncertainty routing leave substantial room for improvement.
 
-These results are sufficient to support project selection. They are exploratory and must not be interpreted as final held-out benchmark results.
-
+These results support project selection but are exploratory and must not be interpreted as final held-out benchmark results.
 ## Research Question
 
 Can process verification achieve a better accuracy-compute trade-off by first applying a base discriminative PRM and selectively invoking a stronger second-stage verifier only when it is expected to improve the decision?
@@ -28,6 +28,7 @@ The proposed pipeline is:
 4. Invoke the second-stage verifier only for selected examples under a fixed budget.
 5. Optionally arbitrate whether to accept its judgement after observing its output.
 6. Compare accuracy with single-model, random, and uncertainty-routing baselines.
+
 ## Models
 
 ### Discriminative PRM
@@ -503,16 +504,16 @@ The purpose of this stage is to decide whether the research direction is technic
 
 The current experiment confirms:
 
-* the required public models and dataset can be loaded;
-* both models can run on available hardware;
-* their outputs can be aligned on the same reasoning steps;
-* complementary errors occur;
-* computational costs can be measured;
-* heuristic baselines can be implemented;
-* a lightweight router can learn a non-trivial signal.
+* all three public verifiers and PRMBench can be loaded;
+* ReasonEval, GenPRM, and PathFinder inference pipelines can run;
+* verifier outputs can be aligned on identical reasoning steps;
+* meaningful complementary errors occur;
+* random, uncertainty, and learned routing baselines can be implemented;
+* expected-gain routing learns a non-trivial grouped out-of-fold signal;
+* post-call PathFinder arbitration can predict harmful replacements;
+* the required cloud inference is affordable at feasibility scale.
 
-A separate held-out evaluation is not required to make the project-selection decision. It is required before treating the reported router performance as a final generalization result.
-
+A separate held-out evaluation is not required for project selection. It is required before treating the reported performance as a generalization result.
 ## Limitations
 
 * In 5 of 100 feasibility examples, the sampled judgement text differed from the probability-based prediction. Reported accuracy uses the probability-based prediction.
@@ -528,36 +529,38 @@ A separate held-out evaluation is not required to make the project-selection dec
 * Most beneficial calls are false-negative corrections.
 * Statistical significance and cross-dataset generalization have not been established.
 * Oracle routing uses ground-truth outcomes and is only an upper bound.
-
 * Only 11 harmful ReasonEval-to-PathFinder replacements are available for training and evaluating the harm predictor.
 * PathFinder and the earlier verifiers were timed on different GPUs, so the current cross-model runtime ratios are not valid compute comparisons.
 * PathFinder results were inspected on the same 100-example development subset used for feature and method exploration.
 
 ## Next Steps If This Direction Is Selected
 
-If the team selects PRM Router as the final project direction, the next experiments should be:
+If the team selects PRM Router as the final project direction, the formal experiment should:
 
-1. Freeze the current feature set and routing protocol.
-2. Create a separate held-out evaluation set.
-3. Train the router on one split and evaluate it once on the held-out split.
-4. Report confidence intervals and paired significance tests.
-5. Perform feature ablations.
-6. Compare different discriminative PRMs and matched model sizes.
-7. Evaluate multiple GenPRM samples and majority voting.
-8. Run the official GenPRM code-verification pipeline on Linux or an A100 GPU.
-9. Evaluate on a naturally distributed benchmark split.
-10. Compare accuracy under equal measured compute budgets.
+1. Freeze the current 100 examples as a development pilot.
+2. Create new original-question-grouped train, validation, and held-out test sets.
+3. Target approximately 600 training, 200 validation, and 400 test examples.
+4. Run ReasonEval and PathFinder on the same GPU for comparable runtime measurements.
+5. Select thresholds, features, and budgets using only training and validation data.
+6. Evaluate the frozen routing protocol once on the held-out test set.
+7. Compare ReasonEval-only, PathFinder-only, random, uncertainty, benefit-only, and expected-gain routing.
+8. Compare always-accept routing with post-call trust arbitration.
+9. Treat overall and fine-grained PathFinder signals as a predefined ablation.
+10. Report accuracy-budget and accuracy-latency curves with bootstrap confidence intervals and paired significance tests.
+11. Retain GenPRM as an alternative second-stage baseline if compute permits.
+12. Evaluate whether results persist under a more natural benchmark distribution.
 
-These steps belong to the full project and are not required before choosing among the three candidate topics.
-
+These steps belong to the full project and are not required before choosing among the candidate topics.
 ## Relevant Resources
 
+* [PathFinder-PRM paper](https://arxiv.org/abs/2505.19706)
+* [PathFinder-PRM official repository](https://github.com/declare-lab/PathFinder-PRM)
+* [PathFinder-PRM-7B checkpoint](https://huggingface.co/declare-lab/PathFinder-PRM-7B)
 * [GenPRM paper](https://arxiv.org/abs/2504.00891)
 * [GenPRM official repository](https://github.com/RyanLiu112/GenPRM)
 * [GenPRM-1.5B checkpoint](https://huggingface.co/GenPRM/GenPRM-1.5B)
 * [ReasonEval-7B checkpoint](https://huggingface.co/GAIR/ReasonEval-7B)
 * [PRMBench Preview](https://huggingface.co/datasets/hitsmy/PRMBench_Preview)
-
 ## Feasibility Decision
 
 **Passed — promising enough for project selection.**
