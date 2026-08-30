@@ -16,16 +16,18 @@ These results are sufficient to support project selection. They are exploratory 
 
 ## Research Question
 
-Can process verification achieve a better accuracy–compute trade-off by first applying a discriminative PRM and selectively invoking a generative PRM only when the second verifier is expected to improve the decision?
+Can process verification achieve a better accuracy-compute trade-off by first applying a base discriminative PRM and selectively invoking a stronger second-stage verifier only when it is expected to improve the decision?
+
+The feasibility study examines GenPRM and PathFinder-PRM as possible second-stage verifiers.
 
 The proposed pipeline is:
 
-1. Run a discriminative PRM on every reasoning step.
-2. Extract features available before calling GenPRM.
-3. Use a lightweight router to estimate the benefit of calling GenPRM.
-4. Invoke GenPRM only for selected examples under a fixed budget.
-5. Compare the resulting accuracy and cost with single-model and heuristic-routing baselines.
-
+1. Run ReasonEval on every reasoning step.
+2. Extract features available before calling the second-stage verifier.
+3. Use a lightweight router to estimate the expected benefit of the call.
+4. Invoke the second-stage verifier only for selected examples under a fixed budget.
+5. Optionally arbitrate whether to accept its judgement after observing its output.
+6. Compare accuracy with single-model, random, and uncertainty-routing baselines.
 ## Models
 
 ### Discriminative PRM
@@ -46,6 +48,17 @@ The default threshold of `0.50` was poorly calibrated on the pilot set. A diagno
 * Local mode: analysis without model-generated Python code execution
 
 The current Windows-compatible implementation is a simplified feasibility version. It does not yet reproduce the complete official GenPRM pipeline with vLLM, iterative code execution, and majority voting.
+
+### Structured PathFinder PRM
+
+* Model: `declare-lab/PathFinder-PRM-7B`
+* Output: mathematical-reasoning, consistency, and final-correctness signals
+* Inference type: official two-pass gated scoring procedure
+* Attention implementation: Flash Attention 2
+* Precision: BF16
+* Evaluation hardware: NVIDIA A40 with 48 GB VRAM
+
+PathFinder was added as an alternative second-stage verifier because its structured signals may support both pre-call routing and post-call trust arbitration.
 
 ## Dataset
 
@@ -77,12 +90,14 @@ experiments/feasibility/prm_router/
 ├── prepare_subset.py
 ├── run_disprm.py
 ├── run_genprm.py
+├── run_pathfinder.py
 ├── analyze_complementarity.py
 ├── evaluate_routing.py
 ├── train_benefit_router.py
 ├── analyze_threshold_sensitivity.py
 ├── analyze_grouped_cv.py
-└── train_expected_gain_router.py
+├── train_expected_gain_router.py
+└── evaluate_pathfinder_cascade.py
 ```
 
 | File                               | Purpose                                                                                |
@@ -90,12 +105,14 @@ experiments/feasibility/prm_router/
 | `prepare_subset.py`                | Create balanced PRMBench step-prefix subsets                                           |
 | `run_disprm.py`                    | Run ReasonEval and save its scores and predictions                                     |
 | `run_genprm.py`                    | Run the Windows-compatible GenPRM feasibility inference                                |
+| `run_pathfinder.py`                | Run the official two-pass PathFinder scoring procedure                                 |
 | `analyze_complementarity.py`       | Identify beneficial, harmful, and shared verifier outcomes                             |
 | `evaluate_routing.py`              | Evaluate random, low-score, uncertainty, and oracle routing                            |
 | `train_benefit_router.py`          | Train and evaluate a logistic-regression benefit router with out-of-fold predictions   |
 | `analyze_threshold_sensitivity.py` | Repeat out-of-fold routing evaluation across multiple DisPRM thresholds                |
 | `analyze_grouped_cv.py`            | Compare standard and original-question-grouped out-of-fold router evaluation           |
 | `train_expected_gain_router.py`    | Compare benefit-only and harm-aware expected-gain routing with grouped OOF predictions |
+| `evaluate_pathfinder_cascade.py`   | Evaluate pre-call PathFinder routing and post-call trust arbitration                   |
 
 ## Experimental Pipeline
 
@@ -177,6 +194,14 @@ python experiments/feasibility/prm_router/run_disprm.py --input data/prm_router/
 python experiments/feasibility/prm_router/run_genprm.py --input data/prm_router/feasibility_100.jsonl --output outputs/prm_router/genprm_feasibility_100.jsonl --limit 100 --max-input-tokens 4096
 ```
 
+### Run PathFinder
+
+PathFinder requires a Linux CUDA environment with Flash Attention 2 for the official inference path.
+
+```bash
+python experiments/feasibility/prm_router/run_pathfinder.py --input data/prm_router/feasibility_100.jsonl --output outputs/prm_router/pathfinder/pathfinder_feasibility_100.jsonl --limit 100 --attention-implementation flash_attention_2
+```
+
 ### Analyze verifier complementarity
 
 ```bash
@@ -201,6 +226,18 @@ python experiments/feasibility/prm_router/train_benefit_router.py
 python experiments/feasibility/prm_router/train_expected_gain_router.py
 ```
 
+### Train the ReasonEval-to-PathFinder expected-gain router
+
+```bash
+python experiments/feasibility/prm_router/train_expected_gain_router.py --disprm outputs/prm_router/reasoneval_feasibility_100.jsonl --second-stage outputs/prm_router/pathfinder/pathfinder_feasibility_100.jsonl --second-stage-kind pathfinder --output outputs/prm_router/robustness/pathfinder_expected_gain_router.json
+```
+
+### Evaluate the PathFinder cascade
+
+```bash
+python experiments/feasibility/prm_router/evaluate_pathfinder_cascade.py
+```
+
 ### Analyze DisPRM threshold sensitivity
 
 ```bash
@@ -215,7 +252,7 @@ python experiments/feasibility/prm_router/analyze_grouped_cv.py
 
 ## Preliminary Results
 
-All experiments were run locally on an NVIDIA GeForce RTX 4060 Laptop GPU with 8 GB VRAM.
+ReasonEval and GenPRM were evaluated locally on an NVIDIA GeForce RTX 4060 Laptop GPU with 8 GB VRAM. PathFinder was evaluated separately on an NVIDIA A40 with 48 GB VRAM. Runtime ratios across these different devices are not treated as comparable compute measurements.
 
 ### Individual Verifiers
 
@@ -389,19 +426,77 @@ The harm-aware router detects harmful calls above the random baseline and someti
 
 This result suggests that changing the prediction target alone is insufficient. More informative error-specific features, such as separate mathematical-correctness and logical-consistency signals, may be required to predict harmful GenPRM calls reliably. This motivates the proposed PathFinder-PRM extension.
 
+## PathFinder Extension Results
+
+PathFinder was evaluated on the same 100-example feasibility subset using its official two-pass gated scoring procedure with Flash Attention 2.
+
+### Verifier accuracy and complementarity
+
+| Pair outcome | Examples |
+|---|---:|
+| Both ReasonEval and PathFinder correct | 55 |
+| ReasonEval correct, PathFinder wrong | 11 |
+| ReasonEval wrong, PathFinder correct | 26 |
+| Both wrong | 8 |
+
+| Verifier | Accuracy |
+|---|---:|
+| ReasonEval at threshold 0.96 | 0.66 |
+| GenPRM | 0.74 |
+| PathFinder | 0.81 |
+| ReasonEval-PathFinder oracle | 0.92 |
+
+PathFinder corrects 26 ReasonEval errors while damaging 11 initially correct predictions. This creates a meaningful selective-routing opportunity.
+
+By contrast, PathFinder and GenPRM have only two examples where PathFinder is wrong and GenPRM is correct. Their oracle accuracy is `0.83`, compared with PathFinder-only accuracy of `0.81`. Therefore, PathFinder-to-GenPRM routing is not supported as the primary cascade by this pilot.
+
+### Pre-call expected-gain routing
+
+The pre-call router uses only ReasonEval and input-derived features. PathFinder outputs are used to construct training targets, but are unavailable when deciding whether to make the call.
+
+| PathFinder budget | Expected-gain router | Benefit-only router | Uncertainty router | Random mean | Oracle |
+|---:|---:|---:|---:|---:|---:|
+| 10% | 0.76 | 0.75 | 0.72 | 0.675 | 0.76 |
+| 20% | 0.82 | 0.80 | 0.71 | 0.691 | 0.86 |
+| 30% | 0.82 | 0.82 | 0.71 | 0.705 | 0.92 |
+| 40% | 0.84 | 0.82 | 0.74 | 0.721 | 0.92 |
+
+The grouped out-of-fold expected-gain router obtains benefit average precision `0.8210` and harm average precision `0.2990`. At a 20% PathFinder-call budget, it selects 17 beneficial and one harmful call.
+
+### Post-call trust arbitration
+
+After PathFinder is called, a second model predicts whether its judgement should replace the ReasonEval judgement. Three post-call feature sets were compared.
+
+| Feature set | Benefit AP | Harm AP |
+|---|---:|---:|
+| Overall PathFinder signals | 0.798 | 0.720 |
+| Fine-grained signals | 0.796 | 0.623 |
+| All signals | 0.772 | 0.675 |
+
+| PathFinder budget | Always accept | Overall arbitration | Fine-grained arbitration | All-signal arbitration | Oracle |
+|---:|---:|---:|---:|---:|---:|
+| 10% | 0.76 | 0.76 | 0.76 | 0.76 | 0.76 |
+| 20% | 0.82 | 0.82 | 0.82 | 0.82 | 0.86 |
+| 40% | 0.84 | 0.83 | 0.82 | 0.82 | 0.92 |
+| 75% | 0.84 | 0.85 | 0.84 | 0.84 | 0.92 |
+| 100% | 0.81 | 0.85 | 0.84 | 0.84 | 0.92 |
+
+Post-call arbitration predicts harmful replacements substantially better than their `0.11` prevalence baseline. It does not improve low-budget routing, but the overall-signal version reaches `0.85` accuracy at 75% and 100% call budgets.
+
+The fine-grained PathFinder signals do not outperform the simpler overall signals in this pilot. They should therefore be treated as an ablation or an inconclusive negative result, not as an established improvement.
+
 ## Preliminary Interpretation
 
-The feasibility results support the following observations:
+The feasibility study supports the following conclusions:
 
-1. ReasonEval and GenPRM exhibit meaningful complementary errors.
-2. GenPRM is more accurate but slower on the current balanced subset.
-3. Calling GenPRM can improve or damage the final prediction.
-4. Low-score and uncertainty heuristics do not reliably identify the most beneficial calls.
-5. Simple observable features contain a strong benefit-prediction signal in the current out-of-fold experiment.
-6. A lightweight learned router can outperform both uncertainty and random routing under the same GenPRM budget.
+1. ReasonEval and PathFinder exhibit stronger complementarity than the tested PathFinder-GenPRM pairing.
+2. ReasonEval-to-PathFinder expected-gain routing is the most promising cascade found in the pilot.
+3. Learned pre-call routing substantially outperforms random and uncertainty routing on the current subset.
+4. Post-call trust arbitration can identify many harmful PathFinder replacements, especially at high call budgets.
+5. Fine-grained PathFinder signals do not provide an incremental improvement over overall signals on these 100 examples.
+6. GenPRM remains a useful baseline, but it does not increase the three-verifier oracle beyond the ReasonEval-PathFinder oracle in this pilot.
 
-Most learned-routing benefit currently comes from identifying correct steps rejected by ReasonEval. The experiment provides only two examples of GenPRM correcting highly confident false acceptance. Therefore, the strongest supported research framing is predicting the marginal benefit of invoking GenPRM, rather than focusing exclusively on high-confidence DisPRM errors.
-
+The strongest supported project framing is therefore pre-call benefit-aware routing followed by optional post-call trust arbitration between complementary process verifiers.
 ## Why This Counts as Feasibility Evidence
 
 The purpose of this stage is to decide whether the research direction is technically and empirically promising.
@@ -433,6 +528,10 @@ A separate held-out evaluation is not required to make the project-selection dec
 * Most beneficial calls are false-negative corrections.
 * Statistical significance and cross-dataset generalization have not been established.
 * Oracle routing uses ground-truth outcomes and is only an upper bound.
+
+* Only 11 harmful ReasonEval-to-PathFinder replacements are available for training and evaluating the harm predictor.
+* PathFinder and the earlier verifiers were timed on different GPUs, so the current cross-model runtime ratios are not valid compute comparisons.
+* PathFinder results were inspected on the same 100-example development subset used for feature and method exploration.
 
 ## Next Steps If This Direction Is Selected
 
