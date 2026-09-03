@@ -16,7 +16,13 @@ MODULE_DIR = (
 )
 sys.path.insert(0, str(MODULE_DIR))
 
-from inference_io import prepare_resume  # noqa: E402
+from inference_io import (  # noqa: E402
+    finalize_run_metadata,
+    initialize_run_metadata,
+    prepare_resume,
+    read_metadata,
+    sha256_file,
+)
 
 
 def sample_record(
@@ -156,6 +162,79 @@ class PrepareResumeTests(unittest.TestCase):
                 input_records=self.input_records,
                 resume=True,
                 expected_metadata=self.metadata,
+            )
+
+    def metadata_arguments(self) -> dict[str, object]:
+        """Create common arguments for metadata lifecycle tests."""
+        script_path = Path(self.temporary_directory.name) / "runner.py"
+        input_path = Path(self.temporary_directory.name) / "input.jsonl"
+        script_path.write_text("print('test')\n", encoding="utf-8")
+        input_path.write_text('{"example_id": "example-1"}\n', encoding="utf-8")
+        return {
+            "script_path": script_path,
+            "repo_root": Path(self.temporary_directory.name),
+            "input_path": input_path,
+            "output_path": self.output_path,
+            "selected_examples": 1,
+            "model_name": "example/model",
+            "model_revision": "abc123",
+            "inference_parameters": {"threshold": 0.5},
+        }
+
+    def test_metadata_lifecycle_records_output_digest(self) -> None:
+        arguments = self.metadata_arguments()
+        metadata_path = initialize_run_metadata(
+            **arguments,
+            resume=False,
+        )
+        self.output_path.write_text('{"prediction": 1}\n', encoding="utf-8")
+
+        finalize_run_metadata(
+            metadata_path=metadata_path,
+            output_path=self.output_path,
+            summary={"examples": 1, "accuracy": 1.0},
+        )
+
+        metadata = read_metadata(metadata_path)
+        self.assertEqual(metadata["status"], "completed")
+        self.assertEqual(
+            metadata["output"]["sha256"],
+            sha256_file(self.output_path),
+        )
+        self.assertEqual(metadata["summary"]["examples"], 1)
+
+    def test_matching_metadata_allows_resume(self) -> None:
+        arguments = self.metadata_arguments()
+        metadata_path = initialize_run_metadata(
+            **arguments,
+            resume=False,
+        )
+        self.output_path.write_text('{"prediction": 1}\n', encoding="utf-8")
+
+        resumed_path = initialize_run_metadata(
+            **arguments,
+            resume=True,
+        )
+
+        metadata = read_metadata(resumed_path)
+        self.assertEqual(resumed_path, metadata_path)
+        self.assertEqual(metadata["resume_count"], 1)
+        self.assertEqual(metadata["status"], "running")
+
+    def test_metadata_signature_mismatch_is_rejected(self) -> None:
+        arguments = self.metadata_arguments()
+        initialize_run_metadata(
+            **arguments,
+            resume=False,
+        )
+        self.output_path.write_text('{"prediction": 1}\n', encoding="utf-8")
+        changed_arguments = dict(arguments)
+        changed_arguments["model_revision"] = "different"
+
+        with self.assertRaisesRegex(ValueError, "run metadata"):
+            initialize_run_metadata(
+                **changed_arguments,
+                resume=True,
             )
 
 
