@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "config_path": "configs\\experiments\\prm_router_formal.json",
+  "dataset": "hitsmy/PRMBench_Preview",
+  "dataset_revision": "5cc7683d0ae5797f84d7aeac0607966f277c39e1",
+  "dataset_fingerprint": "e0749783b1f89406",
+  "source_split": "train",
+  "seed": 20260903,
+  "pilot_examples": 100,
+  "excluded_pilot_groups": 96,
+  "splits": {
+    "train": {
+      "path": "data\\prm_router\\formal\\train.jsonl",
+      "sha256": "3a179b26a8af41e6cbb0ccb65e41298721655e2adbfe5194a2b825116ebf44e7",
+      "examples": 600,
+      "labels": {
+        "0": 300,
+        "1": 300
+      },
+      "original_question_groups": 358,
+      "classifications": {
+        "circular": 73,
+        "confidence": 76,
+        "counterfactual": 72,
+        "deception": 73,
+        "domain_inconsistency": 75,
+        "missing_condition": 70,
+        "multi_solutions": 8,
+        "redundency": 76,
+        "step_contradiction": 77
+      }
+    },
+    "validation": {
+      "path": "data\\prm_router\\formal\\validation.jsonl",
+      "sha256": "a17943ff1a889826aacec5d32b78a52e75640a72029f975f558e3f0a4ff2499f",
+      "examples": 200,
+      "labels": {
+        "0": 100,
+        "1": 100
+      },
+      "original_question_groups": 113,
+      "classifications": {
+        "circular": 25,
+        "confidence": 23,
+        "counterfactual": 26,
+        "deception": 25,
+        "domain_inconsistency": 23,
+        "missing_condition": 22,
+        "multi_solutions": 4,
+        "redundency": 24,
+        "step_contradiction": 28
+      }
+    },
+    "test": {
+      "path": "data\\prm_router\\formal\\test.jsonl",
+      "sha256": "b1f0b22610861e8ec9894cf8dc814bd4dcddbdf1376d3c58d50a48d5bbb3df6d",
+      "examples": 400,
+      "labels": {
+        "0": 200,
+        "1": 200
+      },
+      "original_question_groups": 242,
+      "classifications": {
+        "circular": 51,
+        "confidence": 49,
+        "counterfactual": 50,
+        "deception": 49,
+        "domain_inconsistency": 49,
+        "missing_condition": 48,
+        "multi_solutions": 6,
+        "redundency": 48,
+        "step_contradiction": 50
+      }
+    }
+  }
+}

@@ -5,7 +5,8 @@
     "split": "train",
     "pilot_path": "data/prm_router/feasibility_100.jsonl",
     "group_field": "original_question",
-    "exclude_pilot_groups": true
+    "exclude_pilot_groups": true,
+    "revision": "5cc7683d0ae5797f84d7aeac0607966f277c39e1"
   },
   "formal_splits": {
     "seed": 20260903,
@@ -16,9 +17,18 @@
     "preserve_error_type_coverage": true
   },
   "models": {
-    "base": "GAIR/ReasonEval-7B",
-    "primary_second_stage": "declare-lab/PathFinder-PRM-7B",
-    "alternative_second_stage": "GenPRM/GenPRM-1.5B"
+    "base": {
+      "name": "GAIR/ReasonEval-7B",
+      "revision": "0a6556ef5c937bb17d265ba681b501fd60056cfe"
+    },
+    "primary_second_stage": {
+      "name": "declare-lab/PathFinder-PRM-7B",
+      "revision": "84a7412511836cb4ed74377d9c703eb5638d814c"
+    },
+    "alternative_second_stage": {
+      "name": "GenPRM/GenPRM-1.5B",
+      "revision": "a0fa69768f4524257e1730fec639aa7781c7fa82"
+    }
   },
   "base_threshold": {
     "selection_split": "validation",

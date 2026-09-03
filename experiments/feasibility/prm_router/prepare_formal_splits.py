@@ -365,8 +365,15 @@ def main() -> None:
     train_fraction = requested_sizes["train"] / total_size
     validation_fraction = requested_sizes["validation"] / total_size
 
-    print(f"Loading dataset: {dataset_config['name']}")
-    dataset = load_dataset(dataset_config["name"])
+    dataset_revision = str(dataset_config["revision"])
+    print(
+        f"Loading dataset: {dataset_config['name']} "
+        f"at revision {dataset_revision}"
+    )
+    dataset = load_dataset(
+        dataset_config["name"],
+        revision=dataset_revision,
+    )
     if not isinstance(dataset, DatasetDict):
         raise TypeError("Expected load_dataset to return a DatasetDict.")
     source_split, rows = choose_split(dataset, dataset_config.get("split"))
@@ -435,6 +442,8 @@ def main() -> None:
         "schema_version": 1,
         "config_path": str(args.config),
         "dataset": dataset_config["name"],
+        "dataset_revision": dataset_revision,
+        "dataset_fingerprint": str(rows._fingerprint),
         "source_split": source_split,
         "seed": seed,
         "pilot_examples": len(pilot_records),
