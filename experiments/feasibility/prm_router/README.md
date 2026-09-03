@@ -14,6 +14,7 @@ This preliminary study confirms that:
 6. Random and uncertainty routing leave substantial room for improvement.
 
 These results support project selection but are exploratory and must not be interpreted as final held-out benchmark results.
+
 ## Research Question
 
 Can process verification achieve a better accuracy-compute trade-off by first applying a base discriminative PRM and selectively invoking a stronger second-stage verifier only when it is expected to improve the decision?
@@ -123,25 +124,27 @@ PRMBench step prefix
         v
 ReasonEval score and prediction
         |
-        +----------------------+
-        |                      |
-        v                      v
-Router features          GenPRM judgement
-        |                      |
-        +----------+-----------+
-                   |
-                   v
-       Benefit label and routing evaluation
+        v
+Pre-call expected-utility router
+        |
+        v
+PathFinder structured verification
+        |
+        v
+Optional post-call trust arbitration
 ```
 
-The benefit target is defined as:
+GenPRM is retained as an alternative second-stage comparison baseline.
+
+The second-stage replacement target is defined as:
 
 ```text
-positive = ReasonEval is wrong and GenPRM is correct
-negative = all other cases
+beneficial = ReasonEval is wrong and the second-stage verifier is correct
+neutral    = both verifiers have the same correctness
+harmful    = ReasonEval is correct and the second-stage verifier is wrong
 ```
 
-The router input never includes the ground-truth label, GenPRM prediction, GenPRM score, or PRMBench error-type classification.
+The pre-call router never includes the ground-truth label, second-stage prediction, second-stage score, post-call PathFinder signals, or PRMBench error-type classification.
 
 ## Router Features
 
@@ -533,24 +536,28 @@ A separate held-out evaluation is not required for project selection. It is requ
 * PathFinder and the earlier verifiers were timed on different GPUs, so the current cross-model runtime ratios are not valid compute comparisons.
 * PathFinder results were inspected on the same 100-example development subset used for feature and method exploration.
 
-## Next Steps If This Direction Is Selected
+## Formal Evaluation Preparation
 
-If the team selects PRM Router as the final project direction, the formal experiment should:
+The formal evaluation setup now completed after this feasibility study includes:
 
-1. Freeze the current 100 examples as a development pilot.
-2. Create new original-question-grouped train, validation, and held-out test sets.
-3. Target approximately 600 training, 200 validation, and 400 test examples.
-4. Run ReasonEval and PathFinder on the same GPU for comparable runtime measurements.
-5. Select thresholds, features, and budgets using only training and validation data.
-6. Evaluate the frozen routing protocol once on the held-out test set.
-7. Compare ReasonEval-only, PathFinder-only, random, uncertainty, benefit-only, and expected-gain routing.
-8. Compare always-accept routing with post-call trust arbitration.
-9. Treat overall and fine-grained PathFinder signals as a predefined ablation.
-10. Report accuracy-budget and accuracy-latency curves with bootstrap confidence intervals and paired significance tests.
-11. Retain GenPRM as an alternative second-stage baseline if compute permits.
-12. Evaluate whether results persist under a more natural benchmark distribution.
+1. freezing the 100-example set as a development pilot;
+2. excluding its 96 original-question groups from formal data;
+3. creating grouped splits with 600 training, 200 validation, and 400 held-out test examples;
+4. pinning the PRMBench and verifier revisions;
+5. recording dataset provenance, split statistics, and SHA256 hashes in a tracked reference manifest.
 
-These steps belong to the full project and are not required before choosing among the candidate topics.
+If the team selects PRM Router, the remaining formal work is:
+
+1. make verifier inference revision-pinned, resumable, and metadata-complete;
+2. run ReasonEval and PathFinder on the same GPU;
+3. select thresholds, features, utility weights, and budgets using training and validation data only;
+4. freeze the routing and arbitration protocol;
+5. evaluate once on the held-out test set;
+6. report accuracy-budget and accuracy-latency curves with group-bootstrap confidence intervals and paired significance tests;
+7. retain GenPRM as an alternative second-stage baseline if time and compute permit;
+8. evaluate a more natural benchmark distribution or ProcessBench only as a secondary extension.
+
+
 ## Relevant Resources
 
 * [PathFinder-PRM paper](https://arxiv.org/abs/2505.19706)
@@ -561,6 +568,7 @@ These steps belong to the full project and are not required before choosing amon
 * [GenPRM-1.5B checkpoint](https://huggingface.co/GenPRM/GenPRM-1.5B)
 * [ReasonEval-7B checkpoint](https://huggingface.co/GAIR/ReasonEval-7B)
 * [PRMBench Preview](https://huggingface.co/datasets/hitsmy/PRMBench_Preview)
+
 ## Feasibility Decision
 
 **Passed — promising enough for project selection.**

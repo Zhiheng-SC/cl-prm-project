@@ -1,109 +1,96 @@
 # CL-PRM Project
 
-This repository contains the code, documentation, and feasibility experiments for our course project on process reward modeling in large language models.
+This repository contains code, documentation, and experiments for a course project on process reward modeling in large language models.
 
 ## Project Status
 
-The final project direction has not yet been selected. We are currently comparing three candidate directions:
+The PRM Router feasibility study is complete and has passed the feasibility check. The recommended primary system is:
 
-1. OVM
-2. PRM Router
-3. StepBADGE
+`ReasonEval -> utility router -> PathFinder -> optional risk-controlled arbitration`
 
-The preliminary PRM Router feasibility study has been completed and passed the feasibility check. Its results are exploratory and are not final held-out benchmark results.
+GenPRM is retained as an alternative second-stage comparison baseline.
 
-See the detailed report:
+The project is ready for a final team decision. Formal held-out evaluation has not started. Preparation for that evaluation is complete:
 
-* [PRM Router Feasibility Study](experiments/feasibility/prm_router/README.md)
+- dataset and model revisions are pinned;
+- the 100-example feasibility pilot is excluded from formal data;
+- deterministic grouped train, validation, and test splits are defined;
+- a tracked manifest records dataset provenance, split statistics, and SHA256 hashes.
+
+The reported feasibility results remain exploratory and are not final held-out benchmark results.
+
+See:
+
+- [PRM Router proposal](docs/proposals/prm_router.md)
+- [PRM Router feasibility study](experiments/feasibility/prm_router/README.md)
+
+## Primary Candidate
+
+The PRM Router project studies whether pair-specific correction utility can allocate limited verification compute more effectively than confidence-based escalation.
+
+The completed feasibility study includes:
+
+- balanced PRMBench subset preparation;
+- ReasonEval, GenPRM, and PathFinder inference;
+- verifier complementarity analysis;
+- random and uncertainty-routing baselines;
+- grouped out-of-fold benefit and expected-gain routers;
+- DisPRM threshold sensitivity and grouped leakage checks;
+- post-call trust arbitration;
+- explicit pilot limitations and a held-out evaluation plan.
+
+## Alternative Candidates
+
+OVM and StepBADGE are retained as early candidate placeholders while the final team decision is pending. No completed feasibility results for those directions are currently recorded in this repository.
+
+- [OVM placeholder](docs/proposals/ovm.md)
+- [StepBADGE placeholder](docs/proposals/stepbadge.md)
 
 ## Repository Structure
 
 ```text
 cl-prm-project/
+├── configs/                    # Version-pinned experiment configurations and manifests
 ├── docs/                       # Proposals, literature notes, and meeting notes
 ├── experiments/
-│   └── feasibility/            # Feasibility studies for candidate directions
+│   └── feasibility/            # Completed feasibility code and candidate placeholders
 ├── src/
-│   └── cl_prm/                 # Reusable and finalized project code
-├── scripts/                    # Shared command-line entry points
-├── data/                       # Local datasets, excluded from Git
-├── outputs/                    # Local experiment outputs, excluded from Git
-├── requirements.txt            # Python dependencies
+│   └── cl_prm/                 # Reserved for reusable formal-project modules
+├── data/                       # Generated local datasets, excluded from Git
+├── outputs/                    # Generated local artifacts, excluded from Git
+├── requirements.txt            # Common Python dependencies
 └── README.md
 ```
 
-## Candidate Directions
-
-### OVM
-
-Proposal and feasibility notes:
-
-* [OVM Proposal](docs/proposals/ovm.md)
-* [OVM Feasibility](experiments/feasibility/ovm/README.md)
-
-### PRM Router
-
-The PRM Router direction studies budget-aware composition of complementary process verifiers.
-
-The current primary candidate is:
-
-`ReasonEval -> expected-gain router -> PathFinder -> optional trust arbitration`
-
-GenPRM was evaluated as an alternative second-stage verifier and is retained as a comparison baseline.
-
-The completed feasibility study includes:
-
-* balanced PRMBench subset preparation;
-* ReasonEval, GenPRM, and PathFinder inference;
-* verifier complementarity analysis;
-* random and uncertainty-routing baselines;
-* grouped out-of-fold benefit and expected-gain routers;
-* DisPRM threshold sensitivity and grouped leakage checks;
-* post-call trust arbitration;
-* explicit pilot limitations and a held-out evaluation plan.
-
-See:
-
-* [PRM Router Proposal](docs/proposals/prm_router.md)
-* [PRM Router Feasibility](experiments/feasibility/prm_router/README.md)
-### StepBADGE
-
-Proposal and feasibility notes:
-
-* [StepBADGE Proposal](docs/proposals/stepbadge.md)
-* [StepBADGE Feasibility](experiments/feasibility/stepbadge/README.md)
+The empty `src/cl_prm/` package is reserved for reusable formal router, IO, and evaluation code. Formal shared entry points will be added only after the team confirms the project direction.
 
 ## Environment
 
-The current PRM Router feasibility experiment uses Python 3.10.
+The local ReasonEval and GenPRM feasibility experiments used Python 3.10 with an NVIDIA RTX 4060 Laptop GPU. PathFinder feasibility inference used Linux, BF16, Flash Attention 2, and an NVIDIA A40.
 
-Install the appropriate PyTorch build for the local CUDA environment first. For CUDA 12.4:
-
-```bash
-pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
-```
-
-Then install the remaining dependencies:
+Install the PyTorch build appropriate for the target CUDA environment first, then install the common dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Detailed reproduction commands are provided in the README for each feasibility experiment.
+The formal experiment must record the exact Python, PyTorch, Transformers, CUDA, attention-backend, and GPU versions used for inference.
 
 ## Data and Outputs
 
-Large datasets, model checkpoints, generated predictions, and experiment outputs must not be committed to Git.
+Raw and generated data are not committed to Git.
 
-* Local datasets are stored under `data/`.
-* Generated results are stored under `outputs/`.
-* Model weights and checkpoints are stored locally.
+- `data/README.md` documents deterministic dataset reconstruction.
+- `configs/experiments/prm_router_formal.json` pins dataset and model revisions.
+- `configs/experiments/prm_router_formal_split_manifest.json` records formal split hashes and statistics.
+- `outputs/README.md` defines the local and shared artifact policy.
 
-Only the corresponding documentation files are tracked by Git.
+Model checkpoints should be downloaded from their pinned upstream revisions and must not be committed.
 
 ## Development Convention
 
-* Exploratory or candidate-specific code belongs in `experiments/feasibility/`.
-* Reusable and finalized code belongs in `src/cl_prm/`.
-* Shared command-line entry points belong in `scripts/`.
-* Experimental results and decisions should be documented in the corresponding feasibility README.
+- Completed feasibility code remains in `experiments/feasibility/prm_router/`.
+- Reusable formal-project modules belong in `src/cl_prm/`.
+- Generated datasets and outputs remain outside Git.
+- Formal model selection uses training and validation data only.
+- The held-out test set is evaluated only after thresholds and routing rules are frozen.
