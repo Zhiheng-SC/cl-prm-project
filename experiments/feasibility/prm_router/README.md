@@ -190,6 +190,11 @@ already exists, this option validates that it is an exact input prefix and
 that the model revision and critical inference settings match before
 appending the remaining examples.
 
+Each new inference output also receives a sibling `.metadata.json` file.
+It records input and output hashes, the script hash, model revision, command,
+Git state, inference settings, timestamps, and the software and GPU
+environment. The metadata run signature must also match when resuming.
+
 ### Prepare the feasibility subset
 
 ```bash
