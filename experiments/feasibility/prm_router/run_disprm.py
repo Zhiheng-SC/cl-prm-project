@@ -25,7 +25,11 @@ from transformers import (
 )
 from transformers.configuration_utils import PretrainedConfig
 
-from inference_io import prepare_resume
+from inference_io import (
+    finalize_run_metadata,
+    initialize_run_metadata,
+    prepare_resume,
+)
 
 
 DEFAULT_MODEL = "GAIR/ReasonEval-7B"
@@ -335,22 +339,56 @@ def main() -> None:
         for result in resume_state.existing_records
     )
 
-    if not pending_records:
-        accuracy = correct_count / len(records)
-        average_runtime = total_runtime / len(records)
-        print("ReasonEval output is already complete.")
-        print(f"Accuracy:        {accuracy:.4f}")
-        print(f"Correct:         {correct_count}/{len(records)}")
-        print(f"Average runtime: {average_runtime:.4f}s")
-        print(f"Saved to:        {args.output.resolve()}")
-        return
-
-    if not torch.cuda.is_available() and not args.allow_cpu:
+    if pending_records and (
+        not torch.cuda.is_available() and not args.allow_cpu
+    ):
         raise RuntimeError(
             "No CUDA GPU detected. ReasonEval-7B should be run on "
             "the A100/Linux environment. Use --allow-cpu only if "
             "you intentionally want very slow CPU inference."
         )
+
+    dtype = (
+        torch.bfloat16
+        if torch.cuda.is_available()
+        else torch.float32
+    )
+    metadata_path = initialize_run_metadata(
+        script_path=Path(__file__),
+        repo_root=Path(__file__).resolve().parents[3],
+        input_path=args.input,
+        output_path=args.output,
+        selected_examples=len(records),
+        model_name=args.model,
+        model_revision=args.revision,
+        inference_parameters={
+            "threshold": args.threshold,
+            "dtype": str(dtype).removeprefix("torch."),
+            "allow_cpu": args.allow_cpu,
+        },
+        resume=args.resume,
+    )
+
+    if not pending_records:
+        accuracy = correct_count / len(records)
+        average_runtime = total_runtime / len(records)
+        finalize_run_metadata(
+            metadata_path=metadata_path,
+            output_path=args.output,
+            summary={
+                "examples": len(records),
+                "correct": correct_count,
+                "accuracy": accuracy,
+                "average_runtime_seconds": average_runtime,
+            },
+        )
+        print("ReasonEval output is already complete.")
+        print(f"Accuracy:        {accuracy:.4f}")
+        print(f"Correct:         {correct_count}/{len(records)}")
+        print(f"Average runtime: {average_runtime:.4f}s")
+        print(f"Saved to:        {args.output.resolve()}")
+        print(f"Metadata:        {metadata_path.resolve()}")
+        return
 
     device_description = (
         torch.cuda.get_device_name(0)
@@ -366,12 +404,6 @@ def main() -> None:
     tokenizer = AutoTokenizer.from_pretrained(
         args.model,
         revision=args.revision,
-    )
-
-    dtype = (
-        torch.bfloat16
-        if torch.cuda.is_available()
-        else torch.float32
     )
 
     print(f"Loading model with dtype={dtype}")
@@ -427,6 +459,16 @@ def main() -> None:
 
     accuracy = correct_count / len(records)
     average_runtime = total_runtime / len(records)
+    finalize_run_metadata(
+        metadata_path=metadata_path,
+        output_path=args.output,
+        summary={
+            "examples": len(records),
+            "correct": correct_count,
+            "accuracy": accuracy,
+            "average_runtime_seconds": average_runtime,
+        },
+    )
 
     print()
     print("ReasonEval inference completed.")
@@ -434,6 +476,7 @@ def main() -> None:
     print(f"Correct:         {correct_count}/{len(records)}")
     print(f"Average runtime: {average_runtime:.4f}s")
     print(f"Saved to:        {args.output.resolve()}")
+    print(f"Metadata:        {metadata_path.resolve()}")
 
 
 if __name__ == "__main__":
