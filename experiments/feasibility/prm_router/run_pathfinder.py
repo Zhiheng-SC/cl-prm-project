@@ -17,7 +17,11 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from inference_io import prepare_resume
+from inference_io import (
+    finalize_run_metadata,
+    initialize_run_metadata,
+    prepare_resume,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MODEL = "declare-lab/PathFinder-PRM-7B"
@@ -630,6 +634,36 @@ def main() -> None:
                 f"{len(records)} records already complete."
             )
 
+        if (
+            pending_records
+            and not args.load_in_4bit
+            and not torch.cuda.is_available()
+        ):
+            raise RuntimeError(
+                "Full-precision PathFinder inference requires a CUDA GPU."
+            )
+
+        dtype_name = "float16" if args.load_in_4bit else "bfloat16"
+        metadata_path = initialize_run_metadata(
+            script_path=Path(__file__),
+            repo_root=REPO_ROOT,
+            input_path=args.input,
+            output_path=args.output,
+            selected_examples=len(records),
+            model_name=args.model,
+            model_revision=args.revision,
+            inference_parameters={
+                "threshold": args.threshold,
+                "max_input_tokens": args.max_input_tokens,
+                "attention_implementation": (
+                    args.attention_implementation
+                ),
+                "quantization": quantization,
+                "dtype": dtype_name,
+            },
+            resume=args.resume,
+        )
+
         if not pending_records:
             correct_count = sum(
                 int(result["pathfinder_correct"])
@@ -639,18 +673,25 @@ def main() -> None:
                 float(result["pathfinder_runtime_seconds"])
                 for result in resume_state.existing_records
             )
+            accuracy = correct_count / len(records)
+            average_runtime = total_runtime / len(records)
+            finalize_run_metadata(
+                metadata_path=metadata_path,
+                output_path=args.output,
+                summary={
+                    "examples": len(records),
+                    "correct": correct_count,
+                    "accuracy": accuracy,
+                    "average_runtime_seconds": average_runtime,
+                },
+            )
             print("PathFinder output is already complete.")
             print(f"Examples:        {len(records)}")
-            print(
-                f"Accuracy:        "
-                f"{correct_count / len(records):.4f}"
-            )
+            print(f"Accuracy:        {accuracy:.4f}")
             print(f"Correct:         {correct_count}/{len(records)}")
-            print(
-                f"Average runtime: "
-                f"{total_runtime / len(records):.4f}s"
-            )
+            print(f"Average runtime: {average_runtime:.4f}s")
             print(f"Saved to:        {args.output.resolve()}")
+            print(f"Metadata:        {metadata_path.resolve()}")
             return
 
     print(f"Loading tokenizer: {args.model}@{args.revision}")
@@ -726,6 +767,16 @@ def main() -> None:
 
     accuracy = correct_count / len(records)
     average_runtime = sum(runtime_values) / len(runtime_values)
+    finalize_run_metadata(
+        metadata_path=metadata_path,
+        output_path=args.output,
+        summary={
+            "examples": len(records),
+            "correct": correct_count,
+            "accuracy": accuracy,
+            "average_runtime_seconds": average_runtime,
+        },
+    )
     print()
     print("PathFinder inference completed.")
     print(f"Examples:        {len(records)}")
@@ -733,6 +784,7 @@ def main() -> None:
     print(f"Correct:         {correct_count}/{len(records)}")
     print(f"Average runtime: {average_runtime:.4f}s")
     print(f"Saved to:        {args.output.resolve()}")
+    print(f"Metadata:        {metadata_path.resolve()}")
 
 
 if __name__ == "__main__":
