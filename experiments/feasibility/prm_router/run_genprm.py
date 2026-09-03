@@ -22,7 +22,11 @@ from transformers import (
     StoppingCriteriaList,
 )
 
-from inference_io import prepare_resume
+from inference_io import (
+    finalize_run_metadata,
+    initialize_run_metadata,
+    prepare_resume,
+)
 
 
 MODEL_NAME = "GenPRM/GenPRM-1.5B"
@@ -357,24 +361,54 @@ def main() -> None:
 
     results = list(resume_state.existing_records)
 
+    if pending_records and not torch.cuda.is_available():
+        raise RuntimeError("CUDA GPU is required for GenPRM inference.")
+
+    metadata_path = initialize_run_metadata(
+        script_path=Path(__file__),
+        repo_root=REPO_ROOT,
+        input_path=args.input,
+        output_path=args.output,
+        selected_examples=len(records),
+        model_name=args.model,
+        model_revision=args.revision,
+        inference_parameters={
+            "seed": args.seed,
+            "max_analysis_tokens": args.max_analysis_tokens,
+            "max_input_tokens": args.max_input_tokens,
+            "dtype": "bfloat16",
+            "mode": "analysis_without_code_execution",
+        },
+        resume=args.resume,
+    )
+
     if not pending_records:
-        correct = sum(int(result["genprm_correct"]) for result in results)
+        correct = sum(
+            int(result["genprm_correct"]) for result in results
+        )
         total_runtime = sum(
             float(result["genprm_runtime_seconds"])
             for result in results
         )
-        print("GenPRM output is already complete.")
-        print(f"Accuracy:        {correct / len(records):.4f}")
-        print(f"Correct:         {correct}/{len(records)}")
-        print(
-            f"Average runtime: "
-            f"{total_runtime / len(records):.4f}s"
+        accuracy = correct / len(records)
+        average_runtime = total_runtime / len(records)
+        finalize_run_metadata(
+            metadata_path=metadata_path,
+            output_path=args.output,
+            summary={
+                "examples": len(records),
+                "correct": correct,
+                "accuracy": accuracy,
+                "average_runtime_seconds": average_runtime,
+            },
         )
+        print("GenPRM output is already complete.")
+        print(f"Accuracy:        {accuracy:.4f}")
+        print(f"Correct:         {correct}/{len(records)}")
+        print(f"Average runtime: {average_runtime:.4f}s")
         print(f"Saved to:        {args.output.resolve()}")
+        print(f"Metadata:        {metadata_path.resolve()}")
         return
-
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA GPU is required for GenPRM inference.")
 
     print(f"Loading model: {args.model}@{args.revision}")
     print(f"Input examples: {len(records)}")
@@ -441,6 +475,16 @@ def main() -> None:
         float(result["genprm_runtime_seconds"])
         for result in results
     ) / len(results)
+    finalize_run_metadata(
+        metadata_path=metadata_path,
+        output_path=args.output,
+        summary={
+            "examples": len(results),
+            "correct": correct,
+            "accuracy": accuracy,
+            "average_runtime_seconds": average_runtime,
+        },
+    )
 
     print()
     print("GenPRM inference completed.")
@@ -448,6 +492,7 @@ def main() -> None:
     print(f"Correct:         {correct}/{len(results)}")
     print(f"Average runtime: {average_runtime:.4f}s")
     print(f"Saved to:        {args.output.resolve()}")
+    print(f"Metadata:        {metadata_path.resolve()}")
 
 
 if __name__ == "__main__":
