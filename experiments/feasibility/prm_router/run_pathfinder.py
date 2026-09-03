@@ -19,6 +19,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MODEL = "declare-lab/PathFinder-PRM-7B"
+DEFAULT_REVISION = "84a7412511836cb4ed74377d9c703eb5638d814c"
 DEFAULT_INPUT = (
     REPO_ROOT / "data" / "prm_router" / "feasibility_100.jsonl"
 )
@@ -65,6 +66,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--model", type=str, default=DEFAULT_MODEL)
+    parser.add_argument(
+        "--revision",
+        type=str,
+        default=DEFAULT_REVISION,
+        help="Pinned Hugging Face model revision.",
+    )
     parser.add_argument(
         "--limit",
         type=int,
@@ -403,6 +410,7 @@ def run_one(
     result.update(
         {
             "pathfinder_model": args.model,
+            "pathfinder_model_revision": args.revision,
             "pathfinder_attention_implementation": (
                 args.attention_implementation
             ),
@@ -530,6 +538,7 @@ def run_dry_run(
 def load_model(args: argparse.Namespace):
     model_kwargs: dict[str, Any] = {
         "device_map": "auto",
+        "revision": args.revision,
         "trust_remote_code": True,
         "attn_implementation": args.attention_implementation,
     }
@@ -581,9 +590,10 @@ def main() -> None:
     if not records:
         raise ValueError(f"No input records were found in {args.input}.")
 
-    print(f"Loading tokenizer: {args.model}")
+    print(f"Loading tokenizer: {args.model}@{args.revision}")
     tokenizer = AutoTokenizer.from_pretrained(
         args.model,
+        revision=args.revision,
         trust_remote_code=True,
     )
     mask_token_id = get_single_token_id(tokenizer, "<extra>")
@@ -601,7 +611,7 @@ def main() -> None:
         )
         return
 
-    print(f"Loading model: {args.model}")
+    print(f"Loading model: {args.model}@{args.revision}")
     model = load_model(args)
     args.output.parent.mkdir(parents=True, exist_ok=True)
 

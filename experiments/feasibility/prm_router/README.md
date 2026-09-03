@@ -35,6 +35,7 @@ The proposed pipeline is:
 ### Discriminative PRM
 
 * Model: `GAIR/ReasonEval-7B`
+* Frozen revision: `0a6556ef5c937bb17d265ba681b501fd60056cfe`
 * Output: scalar score indicating whether the current reasoning step is correct
 * Inference type: discriminative forward pass
 
@@ -45,6 +46,7 @@ The default threshold of `0.50` was poorly calibrated on the pilot set. A diagno
 * Final prediction: normalized `Yes/No` probability with threshold `0.50`
 * The sampled judgement text is stored separately from the probability-based prediction
 * Model: `GenPRM/GenPRM-1.5B`
+* Frozen revision: `a0fa69768f4524257e1730fec639aa7781c7fa82`
 * Output: generated analysis followed by a `Yes/No` judgement
 * Number of generations: one per example
 * Local mode: analysis without model-generated Python code execution
@@ -54,6 +56,7 @@ The current Windows-compatible implementation is a simplified feasibility versio
 ### Structured PathFinder PRM
 
 * Model: `declare-lab/PathFinder-PRM-7B`
+* Frozen revision: `84a7412511836cb4ed74377d9c703eb5638d814c`
 * Output: mathematical-reasoning, consistency, and final-correctness signals
 * Inference type: official two-pass gated scoring procedure
 * Attention implementation: Flash Attention 2

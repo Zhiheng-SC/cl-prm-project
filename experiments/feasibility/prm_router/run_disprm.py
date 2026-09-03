@@ -27,6 +27,7 @@ from transformers.configuration_utils import PretrainedConfig
 
 
 DEFAULT_MODEL = "GAIR/ReasonEval-7B"
+DEFAULT_REVISION = "0a6556ef5c937bb17d265ba681b501fd60056cfe"
 
 
 class ReasonEval7B(MistralPreTrainedModel):
@@ -171,6 +172,7 @@ def evaluate_record(
     tokenizer,
     record: dict,
     model_name: str,
+    model_revision: str,
     threshold: float,
 ) -> dict:
     """Evaluate the current step of one PRMBench record."""
@@ -228,6 +230,7 @@ def evaluate_record(
     result.update(
         {
             "disprm_model": model_name,
+            "disprm_model_revision": model_revision,
             "disprm_threshold": threshold,
             "disprm_probability_negative": probability_negative,
             "disprm_probability_neutral": probability_neutral,
@@ -262,6 +265,12 @@ def main() -> None:
         "--model",
         type=str,
         default=DEFAULT_MODEL,
+    )
+    parser.add_argument(
+        "--revision",
+        type=str,
+        default=DEFAULT_REVISION,
+        help="Pinned Hugging Face model revision.",
     )
     parser.add_argument(
         "--threshold",
@@ -303,9 +312,12 @@ def main() -> None:
 
     print(f"Device: {device_description}")
     print(f"Input examples: {len(records)}")
-    print(f"Loading tokenizer: {args.model}")
+    print(f"Loading tokenizer: {args.model}@{args.revision}")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model,
+        revision=args.revision,
+    )
 
     dtype = (
         torch.bfloat16
@@ -319,6 +331,7 @@ def main() -> None:
 
     model = ReasonEval7B.from_pretrained(
         args.model,
+        revision=args.revision,
         torch_dtype=dtype,
         device_map="auto",
         low_cpu_mem_usage=True,
@@ -342,6 +355,7 @@ def main() -> None:
                 tokenizer=tokenizer,
                 record=record,
                 model_name=args.model,
+                model_revision=args.revision,
                 threshold=args.threshold,
             )
 

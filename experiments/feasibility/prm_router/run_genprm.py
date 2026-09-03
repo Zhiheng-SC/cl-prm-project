@@ -24,6 +24,7 @@ from transformers import (
 
 
 MODEL_NAME = "GenPRM/GenPRM-1.5B"
+MODEL_REVISION = "a0fa69768f4524257e1730fec639aa7781c7fa82"
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_INPUT = REPO_ROOT / "data" / "prm_router" / "smoke_test.jsonl"
@@ -65,6 +66,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--model", default=MODEL_NAME)
+    parser.add_argument(
+        "--revision",
+        default=MODEL_REVISION,
+        help="Pinned Hugging Face model revision.",
+    )
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-analysis-tokens", type=int, default=256)
@@ -279,6 +285,7 @@ def run_one(
     result.update(
         {
             "genprm_model": args.model,
+            "genprm_model_revision": args.revision,
             "genprm_current_step": current_step,
             "genprm_analysis": analysis,
             "genprm_analysis_complete": analysis_complete,
@@ -312,17 +319,21 @@ def main() -> None:
     if args.limit is not None:
         records = records[: args.limit]
 
-    print(f"Loading model: {args.model}")
+    print(f"Loading model: {args.model}@{args.revision}")
     print(f"Input examples: {len(records)}")
     print(f"GPU: {torch.cuda.get_device_name(0)}")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model,
+        revision=args.revision,
+    )
 
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
+        revision=args.revision,
         torch_dtype=torch.bfloat16,
         device_map={"": 0},
         low_cpu_mem_usage=True,
