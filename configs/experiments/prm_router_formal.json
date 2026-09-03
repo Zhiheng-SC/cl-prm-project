@@ -30,6 +30,12 @@
       "revision": "a0fa69768f4524257e1730fec639aa7781c7fa82"
     }
   },
+  "runtime": {
+    "warmup_examples": 3,
+    "exclude_model_loading": true,
+    "cuda_synchronize": true,
+    "same_hardware_required": true
+  },
   "base_threshold": {
     "selection_split": "validation",
     "selection_metric": "balanced_accuracy"
