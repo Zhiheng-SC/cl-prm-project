@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "dataset": {
+    "name": "hitsmy/PRMBench_Preview",
+    "split": "train",
+    "pilot_path": "data/prm_router/feasibility_100.jsonl",
+    "group_field": "original_question",
+    "exclude_pilot_groups": true,
+    "revision": "5cc7683d0ae5797f84d7aeac0607966f277c39e1"
+  },
+  "formal_splits": {
+    "seed": 20260903,
+    "train_examples": 600,
+    "validation_examples": 200,
+    "test_examples": 400,
+    "correct_fraction": 0.5,
+    "preserve_error_type_coverage": true
+  },
+  "models": {
+    "base": {
+      "name": "GAIR/ReasonEval-7B",
+      "revision": "0a6556ef5c937bb17d265ba681b501fd60056cfe"
+    },
+    "primary_second_stage": {
+      "name": "declare-lab/PathFinder-PRM-7B",
+      "revision": "84a7412511836cb4ed74377d9c703eb5638d814c"
+    },
+    "alternative_second_stage": {
+      "name": "GenPRM/GenPRM-1.5B",
+      "revision": "a0fa69768f4524257e1730fec639aa7781c7fa82"
+    }
+  },
+  "base_threshold": {
+    "selection_split": "validation",
+    "selection_metric": "balanced_accuracy"
+  },
+  "routing": {
+    "model": "logistic_regression",
+    "primary_call_budget": 0.2,
+    "secondary_call_budgets": [
+      0.1,
+      0.3,
+      0.4,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "targets": [
+      "base_failure",
+      "beneficial",
+      "beneficial_neutral_harmful"
+    ],
+    "pre_call_features": [
+      "disprm_score",
+      "disprm_predicted_correct",
+      "distance_to_threshold",
+      "current_step",
+      "total_steps",
+      "step_position",
+      "question_characters",
+      "prefix_characters",
+      "current_step_characters"
+    ]
+  },
+  "arbitration": {
+    "overall_features": [
+      "pathfinder_official_score",
+      "pathfinder_gate_passed",
+      "pathfinder_prediction"
+    ],
+    "fine_grained_features": [
+      "pathfinder_math_probability",
+      "pathfinder_consistency_probability"
+    ]
+  },
+  "evaluation": {
+    "primary_metric": "accuracy_at_20_percent_call_budget",
+    "bootstrap_unit": "original_question",
+    "bootstrap_samples": 2000,
+    "confidence_level": 0.95,
+    "same_hardware_runtime_required": true
+  }
+}
