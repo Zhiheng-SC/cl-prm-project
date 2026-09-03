@@ -195,6 +195,10 @@ It records input and output hashes, the script hash, model revision, command,
 Git state, inference settings, timestamps, and the software and GPU
 environment. The metadata run signature must also match when resuming.
 
+Formal runtime measurements use three untimed warmup examples, exclude model
+loading, and synchronize CUDA around each measured inference region. All
+verifiers used in a direct runtime comparison must run on the same GPU.
+
 ### Prepare the feasibility subset
 
 ```bash
