@@ -286,7 +286,7 @@ def write_jsonl(records: list[dict[str, Any]], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="\n") as file:
         for record in records:
-            file.write(json.dumps(record, ensure_ascii=False) + "\n")
+            file.write(json.dumps(record, ensure_ascii=True) + "\n")
 
 
 def sha256_file(path: Path) -> str:
