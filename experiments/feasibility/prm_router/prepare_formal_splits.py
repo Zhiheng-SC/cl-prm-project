@@ -440,7 +440,7 @@ def main() -> None:
 
     manifest = {
         "schema_version": 1,
-        "config_path": str(args.config),
+        "config_path": args.config.as_posix(),
         "dataset": dataset_config["name"],
         "dataset_revision": dataset_revision,
         "dataset_fingerprint": str(rows._fingerprint),
@@ -453,7 +453,7 @@ def main() -> None:
 
     for split_name, records in split_records.items():
         manifest["splits"][split_name] = {
-            "path": str(output_paths[split_name]),
+            "path": output_paths[split_name].as_posix(),
             "sha256": sha256_file(output_paths[split_name]),
             "examples": len(records),
             "labels": dict(sorted(Counter(

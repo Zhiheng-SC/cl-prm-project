@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "config_path": "configs\\experiments\\prm_router_formal.json",
+  "config_path": "configs/experiments/prm_router_formal.json",
   "dataset": "hitsmy/PRMBench_Preview",
   "dataset_revision": "5cc7683d0ae5797f84d7aeac0607966f277c39e1",
   "dataset_fingerprint": "e0749783b1f89406",
@@ -10,7 +10,7 @@
   "excluded_pilot_groups": 96,
   "splits": {
     "train": {
-      "path": "data\\prm_router\\formal\\train.jsonl",
+      "path": "data/prm_router/formal/train.jsonl",
       "sha256": "3a179b26a8af41e6cbb0ccb65e41298721655e2adbfe5194a2b825116ebf44e7",
       "examples": 600,
       "labels": {
@@ -31,7 +31,7 @@
       }
     },
     "validation": {
-      "path": "data\\prm_router\\formal\\validation.jsonl",
+      "path": "data/prm_router/formal/validation.jsonl",
       "sha256": "a17943ff1a889826aacec5d32b78a52e75640a72029f975f558e3f0a4ff2499f",
       "examples": 200,
       "labels": {
@@ -52,7 +52,7 @@
       }
     },
     "test": {
-      "path": "data\\prm_router\\formal\\test.jsonl",
+      "path": "data/prm_router/formal/test.jsonl",
       "sha256": "b1f0b22610861e8ec9894cf8dc814bd4dcddbdf1376d3c58d50a48d5bbb3df6d",
       "examples": 400,
       "labels": {

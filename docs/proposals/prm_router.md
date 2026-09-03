@@ -467,16 +467,18 @@ Mitigation:
 
 There are no remaining technical blockers for the feasibility implementation. The ReasonEval, GenPRM, and PathFinder pipelines have all been executed successfully.
 
-Before formal evaluation begins, the following items must be completed:
+The formal configuration and leakage-controlled split manifests are complete. Dataset and model revisions are pinned, the 100-example pilot groups are excluded, and the tracked split hashes have been verified.
+
+Before formal verifier inference begins, the following items remain:
 
 1. the team must confirm PRM routing as the final project direction;
-2. the formal feature set, utility definition, baselines, and primary metric must be frozen;
-3. the grouped train, validation, and held-out test manifests must be generated and audited;
-4. access to a 40-80 GB GPU and sufficient persistent checkpoint storage must be confirmed;
+2. utility-weight search spaces, validation selection rules, and the final comparison baseline must be frozen in the experiment configuration;
+3. the inference wrappers must support pinned revisions, safe resume, and complete run metadata;
+4. access to a shared 40-80 GB GPU and persistent artifact storage must be confirmed;
 5. all primary verifier outputs and runtime measurements must be collected on the same hardware;
 6. team responsibilities for inference, router evaluation, analysis, and report writing must be assigned.
 
-The next coding task is therefore the formal grouped-split and experiment-configuration pipeline, not another modification of the 100-example pilot.
+The next coding task is formal inference engineering, followed by train-and-validation inference. The 100-example pilot should not be modified further.
 
 ## Decision
 

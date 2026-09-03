@@ -1,19 +1,7 @@
-# Project Proposal
+# StepBADGE Proposal
 
-## Research Question
+## Status
 
-## Motivation
+Candidate placeholder only. No StepBADGE feasibility implementation or result is currently committed.
 
-## Minimum Experiment
-
-## Models and Datasets
-
-## Expected Compute
-
-## Main Risks
-
-## Current Blockers
-
-## Feasibility Result
-
-## Decision
+This file is retained while the team makes its final project-direction decision. If StepBADGE is not selected, it may be moved to an archive or removed.

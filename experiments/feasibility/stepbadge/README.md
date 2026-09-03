@@ -1,15 +1,7 @@
 # StepBADGE Feasibility
 
-## Goal
+## Status
 
-## Minimum Test
+Not run. This directory is retained only as a candidate placeholder pending the final team decision.
 
-## Required Models and Datasets
-
-## Setup
-
-## Results
-
-## Problems
-
-## Feasibility Decision
+No feasibility result should be inferred from the presence of this file.
