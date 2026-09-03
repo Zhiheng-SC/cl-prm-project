@@ -25,6 +25,8 @@ from transformers import (
 )
 from transformers.configuration_utils import PretrainedConfig
 
+from inference_io import prepare_resume
+
 
 DEFAULT_MODEL = "GAIR/ReasonEval-7B"
 DEFAULT_REVISION = "0a6556ef5c937bb17d265ba681b501fd60056cfe"
@@ -285,6 +287,11 @@ def main() -> None:
         help="Only evaluate the first N records.",
     )
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Append after validating an existing output prefix.",
+    )
+    parser.add_argument(
         "--allow-cpu",
         action="store_true",
         help="Allow CPU inference. This will be very slow.",
@@ -292,17 +299,58 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    if args.limit is not None and args.limit < 1:
+        raise ValueError("--limit must be at least 1.")
+    if not 0.0 <= args.threshold <= 1.0:
+        raise ValueError("--threshold must be between 0 and 1.")
+
+    records = load_jsonl(args.input)
+    if args.limit is not None:
+        records = records[: args.limit]
+
+    resume_state = prepare_resume(
+        output_path=args.output,
+        input_records=records,
+        resume=args.resume,
+        expected_metadata={
+            "disprm_model": args.model,
+            "disprm_model_revision": args.revision,
+            "disprm_threshold": args.threshold,
+        },
+    )
+    pending_records = records[resume_state.completed :]
+
+    if args.resume:
+        print(
+            f"Resume validation passed: {resume_state.completed}/"
+            f"{len(records)} records already complete."
+        )
+
+    correct_count = sum(
+        int(result["disprm_correct"])
+        for result in resume_state.existing_records
+    )
+    total_runtime = sum(
+        float(result["disprm_runtime_seconds"])
+        for result in resume_state.existing_records
+    )
+
+    if not pending_records:
+        accuracy = correct_count / len(records)
+        average_runtime = total_runtime / len(records)
+        print("ReasonEval output is already complete.")
+        print(f"Accuracy:        {accuracy:.4f}")
+        print(f"Correct:         {correct_count}/{len(records)}")
+        print(f"Average runtime: {average_runtime:.4f}s")
+        print(f"Saved to:        {args.output.resolve()}")
+        return
+
     if not torch.cuda.is_available() and not args.allow_cpu:
         raise RuntimeError(
             "No CUDA GPU detected. ReasonEval-7B should be run on "
             "the A100/Linux environment. Use --allow-cpu only if "
             "you intentionally want very slow CPU inference."
         )
-
-    records = load_jsonl(args.input)
-
-    if args.limit is not None:
-        records = records[: args.limit]
 
     device_description = (
         torch.cuda.get_device_name(0)
@@ -312,6 +360,7 @@ def main() -> None:
 
     print(f"Device: {device_description}")
     print(f"Input examples: {len(records)}")
+    print(f"Remaining examples: {len(pending_records)}")
     print(f"Loading tokenizer: {args.model}@{args.revision}")
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -326,7 +375,6 @@ def main() -> None:
     )
 
     print(f"Loading model with dtype={dtype}")
-
     model_load_start = time.perf_counter()
 
     model = ReasonEval7B.from_pretrained(
@@ -338,18 +386,18 @@ def main() -> None:
     ).eval()
 
     model_load_seconds = time.perf_counter() - model_load_start
-
-    print(
-        f"Model loaded in {model_load_seconds:.2f} seconds."
-    )
+    print(f"Model loaded in {model_load_seconds:.2f} seconds.")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    correct_count = 0
-    total_runtime = 0.0
-
-    with args.output.open("w", encoding="utf-8") as output_file:
-        for index, record in enumerate(records, start=1):
+    with args.output.open(
+        resume_state.file_mode,
+        encoding="utf-8",
+    ) as output_file:
+        for index, record in enumerate(
+            pending_records,
+            start=resume_state.completed + 1,
+        ):
             result = evaluate_record(
                 model=model,
                 tokenizer=tokenizer,
@@ -381,7 +429,7 @@ def main() -> None:
     average_runtime = total_runtime / len(records)
 
     print()
-    print("ReasonEval smoke test completed.")
+    print("ReasonEval inference completed.")
     print(f"Accuracy:        {accuracy:.4f}")
     print(f"Correct:         {correct_count}/{len(records)}")
     print(f"Average runtime: {average_runtime:.4f}s")

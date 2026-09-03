@@ -96,6 +96,7 @@ experiments/feasibility/prm_router/
 ├── run_disprm.py
 ├── run_genprm.py
 ├── run_pathfinder.py
+├── inference_io.py
 ├── analyze_complementarity.py
 ├── evaluate_routing.py
 ├── train_benefit_router.py
@@ -111,6 +112,7 @@ experiments/feasibility/prm_router/
 | `run_disprm.py`                    | Run ReasonEval and save its scores and predictions                                     |
 | `run_genprm.py`                    | Run the Windows-compatible GenPRM feasibility inference                                |
 | `run_pathfinder.py`                | Run the official two-pass PathFinder scoring procedure                                 |
+| `inference_io.py`                  | Validate existing JSONL prefixes for safe interrupted-run resumption                   |
 | `analyze_complementarity.py`       | Identify beneficial, harmful, and shared verifier outcomes                             |
 | `evaluate_routing.py`              | Evaluate random, low-score, uncertainty, and oracle routing                            |
 | `train_benefit_router.py`          | Train and evaluate a logistic-regression benefit router with out-of-fold predictions   |
@@ -182,6 +184,11 @@ pip install -r requirements.txt
 ```
 
 ## Reproduction
+
+The three verifier inference scripts accept `--resume`. When an output
+already exists, this option validates that it is an exact input prefix and
+that the model revision and critical inference settings match before
+appending the remaining examples.
 
 ### Prepare the feasibility subset
 

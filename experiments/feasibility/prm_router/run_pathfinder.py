@@ -17,6 +17,8 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from inference_io import prepare_resume
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MODEL = "declare-lab/PathFinder-PRM-7B"
 DEFAULT_REVISION = "84a7412511836cb4ed74377d9c703eb5638d814c"
@@ -79,6 +81,11 @@ def parse_args() -> argparse.Namespace:
         help="Only evaluate the first N records.",
     )
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Append after validating an existing output prefix.",
+    )
+    parser.add_argument(
         "--threshold",
         type=float,
         default=0.5,
@@ -130,6 +137,8 @@ def validate_args(args: argparse.Namespace) -> None:
             "--dry-run does not load model weights, so do not combine it "
             "with --load-in-4bit."
         )
+    if args.dry_run and args.resume:
+        raise ValueError("--resume cannot be combined with --dry-run.")
 
 
 def get_single_token_id(tokenizer, token: str) -> int:
@@ -428,6 +437,7 @@ def run_one(
             "pathfinder_gate_passed": gate_passed,
             "pathfinder_official_score": official_score,
             "pathfinder_threshold": args.threshold,
+            "pathfinder_max_input_tokens": args.max_input_tokens,
             "pathfinder_prediction": prediction,
             "pathfinder_correct": prediction == label,
             "pathfinder_first_input_tokens": first_input_tokens,
@@ -590,6 +600,59 @@ def main() -> None:
     if not records:
         raise ValueError(f"No input records were found in {args.input}.")
 
+    resume_state = None
+    pending_records = records
+
+    if not args.dry_run:
+        quantization = (
+            "bitsandbytes_nf4" if args.load_in_4bit else "none"
+        )
+        resume_state = prepare_resume(
+            output_path=args.output,
+            input_records=records,
+            resume=args.resume,
+            expected_metadata={
+                "pathfinder_model": args.model,
+                "pathfinder_model_revision": args.revision,
+                "pathfinder_attention_implementation": (
+                    args.attention_implementation
+                ),
+                "pathfinder_threshold": args.threshold,
+                "pathfinder_max_input_tokens": args.max_input_tokens,
+                "pathfinder_quantization": quantization,
+            },
+        )
+        pending_records = records[resume_state.completed :]
+
+        if args.resume:
+            print(
+                f"Resume validation passed: {resume_state.completed}/"
+                f"{len(records)} records already complete."
+            )
+
+        if not pending_records:
+            correct_count = sum(
+                int(result["pathfinder_correct"])
+                for result in resume_state.existing_records
+            )
+            total_runtime = sum(
+                float(result["pathfinder_runtime_seconds"])
+                for result in resume_state.existing_records
+            )
+            print("PathFinder output is already complete.")
+            print(f"Examples:        {len(records)}")
+            print(
+                f"Accuracy:        "
+                f"{correct_count / len(records):.4f}"
+            )
+            print(f"Correct:         {correct_count}/{len(records)}")
+            print(
+                f"Average runtime: "
+                f"{total_runtime / len(records):.4f}s"
+            )
+            print(f"Saved to:        {args.output.resolve()}")
+            return
+
     print(f"Loading tokenizer: {args.model}@{args.revision}")
     tokenizer = AutoTokenizer.from_pretrained(
         args.model,
@@ -611,15 +674,31 @@ def main() -> None:
         )
         return
 
+    if resume_state is None:
+        raise AssertionError("Resume state was not initialized.")
+
+    print(f"Remaining examples: {len(pending_records)}")
     print(f"Loading model: {args.model}@{args.revision}")
     model = load_model(args)
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    correct_count = 0
-    runtime_values: list[float] = []
+    correct_count = sum(
+        int(result["pathfinder_correct"])
+        for result in resume_state.existing_records
+    )
+    runtime_values = [
+        float(result["pathfinder_runtime_seconds"])
+        for result in resume_state.existing_records
+    ]
 
-    with args.output.open("w", encoding="utf-8") as output_file:
-        for index, record in enumerate(records, start=1):
+    with args.output.open(
+        resume_state.file_mode,
+        encoding="utf-8",
+    ) as output_file:
+        for index, record in enumerate(
+            pending_records,
+            start=resume_state.completed + 1,
+        ):
             result = run_one(
                 record=record,
                 model=model,

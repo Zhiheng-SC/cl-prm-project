@@ -22,6 +22,8 @@ from transformers import (
     StoppingCriteriaList,
 )
 
+from inference_io import prepare_resume
+
 
 MODEL_NAME = "GenPRM/GenPRM-1.5B"
 MODEL_REVISION = "a0fa69768f4524257e1730fec639aa7781c7fa82"
@@ -72,6 +74,11 @@ def parse_args() -> argparse.Namespace:
         help="Pinned Hugging Face model revision.",
     )
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Append after validating an existing output prefix.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-analysis-tokens", type=int, default=256)
     parser.add_argument("--max-input-tokens", type=int, default=3072)
@@ -286,6 +293,9 @@ def run_one(
         {
             "genprm_model": args.model,
             "genprm_model_revision": args.revision,
+            "genprm_seed_base": args.seed,
+            "genprm_max_analysis_tokens": args.max_analysis_tokens,
+            "genprm_max_input_tokens": args.max_input_tokens,
             "genprm_current_step": current_step,
             "genprm_analysis": analysis,
             "genprm_analysis_complete": analysis_complete,
@@ -311,16 +321,64 @@ def run_one(
 def main() -> None:
     args = parse_args()
 
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA GPU is required for this smoke test.")
+    if args.limit is not None and args.limit < 1:
+        raise ValueError("--limit must be at least 1.")
+    if args.max_analysis_tokens < 1:
+        raise ValueError("--max-analysis-tokens must be positive.")
+    if args.max_input_tokens < 1:
+        raise ValueError("--max-input-tokens must be positive.")
 
     records = read_jsonl(args.input)
-
     if args.limit is not None:
         records = records[: args.limit]
+    if not records:
+        raise ValueError(f"No input records were found in {args.input}.")
+
+    resume_state = prepare_resume(
+        output_path=args.output,
+        input_records=records,
+        resume=args.resume,
+        expected_metadata={
+            "genprm_model": args.model,
+            "genprm_model_revision": args.revision,
+            "genprm_seed_base": args.seed,
+            "genprm_max_analysis_tokens": args.max_analysis_tokens,
+            "genprm_max_input_tokens": args.max_input_tokens,
+            "genprm_mode": "analysis_without_code_execution",
+        },
+    )
+    pending_records = records[resume_state.completed :]
+
+    if args.resume:
+        print(
+            f"Resume validation passed: {resume_state.completed}/"
+            f"{len(records)} records already complete."
+        )
+
+    results = list(resume_state.existing_records)
+
+    if not pending_records:
+        correct = sum(int(result["genprm_correct"]) for result in results)
+        total_runtime = sum(
+            float(result["genprm_runtime_seconds"])
+            for result in results
+        )
+        print("GenPRM output is already complete.")
+        print(f"Accuracy:        {correct / len(records):.4f}")
+        print(f"Correct:         {correct}/{len(records)}")
+        print(
+            f"Average runtime: "
+            f"{total_runtime / len(records):.4f}s"
+        )
+        print(f"Saved to:        {args.output.resolve()}")
+        return
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA GPU is required for GenPRM inference.")
 
     print(f"Loading model: {args.model}@{args.revision}")
     print(f"Input examples: {len(records)}")
+    print(f"Remaining examples: {len(pending_records)}")
     print(f"GPU: {torch.cuda.get_device_name(0)}")
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -342,10 +400,14 @@ def main() -> None:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    results: list[dict[str, Any]] = []
-
-    with args.output.open("w", encoding="utf-8") as output_file:
-        for index, record in enumerate(records):
+    with args.output.open(
+        resume_state.file_mode,
+        encoding="utf-8",
+    ) as output_file:
+        for index, record in enumerate(
+            pending_records,
+            start=resume_state.completed,
+        ):
             print(
                 f"[{index + 1}/{len(records)}] "
                 f"{record['example_id']} "
@@ -373,14 +435,15 @@ def main() -> None:
                 f"runtime={result['genprm_runtime_seconds']:.2f}s"
             )
 
-    correct = sum(result["genprm_correct"] for result in results)
+    correct = sum(int(result["genprm_correct"]) for result in results)
     accuracy = correct / len(results)
     average_runtime = sum(
-        result["genprm_runtime_seconds"] for result in results
+        float(result["genprm_runtime_seconds"])
+        for result in results
     ) / len(results)
 
     print()
-    print("GenPRM smoke test completed.")
+    print("GenPRM inference completed.")
     print(f"Accuracy:        {accuracy:.4f}")
     print(f"Correct:         {correct}/{len(results)}")
     print(f"Average runtime: {average_runtime:.4f}s")
