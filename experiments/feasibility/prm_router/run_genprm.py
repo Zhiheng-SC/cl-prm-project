@@ -83,6 +83,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Append after validating an existing output prefix.",
     )
+    parser.add_argument(
+        "--warmup-examples",
+        type=int,
+        default=3,
+        help="Untimed model warmup examples before measured inference.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-analysis-tokens", type=int, default=256)
     parser.add_argument("--max-input-tokens", type=int, default=3072)
@@ -331,6 +337,8 @@ def main() -> None:
         raise ValueError("--max-analysis-tokens must be positive.")
     if args.max_input_tokens < 1:
         raise ValueError("--max-input-tokens must be positive.")
+    if args.warmup_examples < 0:
+        raise ValueError("--warmup-examples cannot be negative.")
 
     records = read_jsonl(args.input)
     if args.limit is not None:
@@ -378,6 +386,10 @@ def main() -> None:
             "max_input_tokens": args.max_input_tokens,
             "dtype": "bfloat16",
             "mode": "analysis_without_code_execution",
+            "warmup_examples": args.warmup_examples,
+            "timing_scope": (
+                "synchronized_analysis_and_judgement_generation"
+            ),
         },
         resume=args.resume,
     )
@@ -431,6 +443,21 @@ def main() -> None:
         low_cpu_mem_usage=True,
     )
     model.eval()
+
+    warmup_count = min(args.warmup_examples, len(pending_records))
+    if warmup_count:
+        print(f"Warming up on {warmup_count} example(s).")
+        for offset, record in enumerate(
+            pending_records[:warmup_count],
+            start=resume_state.completed,
+        ):
+            run_one(
+                model=model,
+                tokenizer=tokenizer,
+                record=record,
+                args=args,
+                index=offset,
+            )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
