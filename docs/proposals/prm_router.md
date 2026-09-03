@@ -2,18 +2,29 @@
 
 ## Status
 
-**Revised candidate proposal. Preliminary feasibility passed; final team selection is pending.**
+**Candidate ready for team decision. Preliminary feasibility passed; formal held-out evaluation has not yet started.**
 
-The original proposal used GenPRM as the second-stage verifier. Feasibility experiments subsequently identified PathFinder-PRM as the stronger primary candidate. GenPRM is retained as an alternative second-stage baseline.
+The recommended primary system is:
+
+`ReasonEval -> utility router -> PathFinder -> optional risk-controlled arbitration`
+
+GenPRM is retained as an alternative second-stage comparison baseline.
 
 ## Research Question
 
-Can process verification achieve a better accuracy-compute trade-off by predicting when a stronger second-stage verifier will improve a base PRM, and by deciding whether to trust the second-stage judgement after the call?
+Can pair-specific correction utility predict when one process verifier should override another more reliably than confidence-based escalation?
 
 The project studies two related decisions:
 
-1. **Pre-call routing:** should the stronger verifier be invoked?
-2. **Post-call arbitration:** if invoked, should its judgement replace the base verifier?
+1. **Pre-call routing:** is the expected correction benefit worth the additional verification cost?
+2. **Post-call arbitration:** after observing the second verifier, is replacing the base judgement sufficiently reliable?
+
+The formal study addresses four research questions:
+
+1. **RQ1:** Do complementary verifier errors translate into learnable held-out routing gains?
+2. **RQ2:** Does pair-specific expected utility outperform uncertainty and base-verifier failure prediction?
+3. **RQ3:** Can risk-controlled post-call arbitration reduce harmful replacements?
+4. **RQ4 (optional):** Do routing gains transfer from PRMBench to ProcessBench?
 
 ## Motivation
 
@@ -34,7 +45,7 @@ Run `GAIR/ReasonEval-7B` on every reasoning-step prefix and record:
 * step position and solution length;
 * question, prefix, and current-step lengths.
 
-### Stage 2: Pre-call expected-gain routing
+### Stage 2: Pre-call utility routing
 
 Train a lightweight router using only information available before the second-stage call.
 
@@ -44,11 +55,17 @@ Each training example receives one of three outcomes:
 * neutral: both verifiers have the same correctness;
 * harmful: ReasonEval is correct and the second-stage verifier is wrong.
 
-The routing score is:
+The completed feasibility baseline uses:
 
-`P(beneficial) - P(harmful)`
+`expected gain = P(beneficial) - P(harmful)`
 
-Under a fixed call budget, only examples with the highest predicted expected gain are sent to the second-stage verifier.
+The formal extension will additionally study a cost- and risk-aware utility:
+
+`utility = P(beneficial) - lambda_h * P(harmful) - mu * predicted additional cost`
+
+The additional cost will be estimated from same-hardware measurements and input-derived information such as token length. The utility weights and routing threshold must be selected using training and validation data only.
+
+Under a fixed compute budget, the router ranks examples by predicted utility. It may abstain and retain ReasonEval when the predicted utility does not exceed a validation-calibrated threshold.
 
 ### Stage 3: PathFinder verification
 
@@ -61,15 +78,18 @@ PathFinder performs a hierarchical two-pass evaluation:
 
 The official Flash Attention 2 inference path is used for formal model output.
 
-### Stage 4: Post-call trust arbitration
+### Stage 4: Risk-controlled post-call arbitration
 
 After PathFinder has been called, a second lightweight model decides whether its prediction should replace ReasonEval.
 
 The arbitration study compares:
 
+* unconditional acceptance of PathFinder;
 * overall PathFinder score, gate, and prediction;
 * fine-grained mathematical and consistency signals;
 * all available PathFinder signals.
+
+A validation-calibrated override threshold will be used to study the trade-off between coverage and harmful replacement risk. The final evaluation will report both routing accuracy and the proportion of incorrect overrides.
 
 PathFinder features are used only after the call and therefore do not leak into the pre-call routing decision.
 
@@ -79,7 +99,8 @@ PathFinder features are used only after the call and therefore do not leak into 
 
 * `GAIR/ReasonEval-7B`
 * One discriminative forward pass
-* Pilot-selected validity threshold: `0.96`
+* Feasibility threshold: `0.96`, selected on the separate 20-example pilot
+* Formal threshold: selected using the validation split only
 
 ### Primary second-stage verifier
 
@@ -105,32 +126,41 @@ Completed development subsets:
 * feasibility subset: 50 correct and 50 erroneous steps;
 * feasibility random seed: `2026`.
 
-If selected as the final project, the current 100 examples will remain a frozen development pilot. New data will be split approximately into:
+If selected as the final project, the current 100 examples will remain a frozen development pilot. These records and all other records derived from the same normalized `original_question` groups will be excluded from every formal split.
+
+New data will be split approximately into:
 
 * training: 600 examples;
 * validation: 200 examples;
 * held-out test: 400 examples.
 
+The primary formal sample will contain approximately equal numbers of correct and erroneous steps while preserving error-type coverage as closely as possible.
+
 All splits must be grouped by normalized `original_question` so that variants of the same mathematical problem cannot cross dataset boundaries.
 
 ## Difference from Existing Work
 
-The GenPRM paper studies generative process verification and test-time scaling through multiple verification paths.
+Dynamic verification and model cascading are established research directions. Dyve combines fast and slow process verification, FlexiVe dynamically allocates generative verification compute, and CAMEL uses confidence-gated reflection. General LLM cascades similarly escalate selected examples from weaker to stronger models.
 
-The PathFinder-PRM paper introduces hierarchical error-aware supervision and separate mathematical-correctness and logical-consistency signals.
+This project therefore does not claim to be the first dynamic verifier, confidence gate, expected-gain router, or model cascade.
 
-This project does not introduce a new PRM architecture. Its proposed contribution is the selective composition of existing complementary verifiers:
+Instead, it studies whether the realized correction utility between independently trained, heterogeneous process verifiers is predictable. The compared verifiers include scalar discriminative, structured discriminative, and generative PRMs.
 
-* predicting the marginal benefit of an additional verifier call;
-* allocating calls under a fixed budget;
-* distinguishing beneficial and harmful replacements;
-* arbitrating whether to trust the second-stage output after the call.
+The intended contributions are:
 
-The novelty claim must be checked against related dynamic-verification and routing work before the final report.
+* a controlled analysis of beneficial, neutral, and harmful replacements between independently trained PRMs;
+* comparison of base-verifier failure prediction with pair-specific benefit and expected-utility routing;
+* cost-aware routing based on same-hardware measurements rather than call percentage alone;
+* risk-controlled post-call arbitration for verifier disagreement;
+* grouped held-out evaluation and, if feasible, cross-dataset evaluation.
+
+RouteGuard provides closely related motivation for distinguishing oracle complementarity from learnable routing gain and for guarding against small-sample overestimation. This project applies those concerns specifically to step-level process verification and additionally studies post-call evidence from PathFinder.
+
+The contribution is an empirical and system-level study rather than a new PRM architecture.
 
 ## Completed Feasibility Evidence
 
-The 100-example pilot produced:
+The 100-example pilot produced the following exploratory results. Verifier accuracies are measured on the frozen pilot, while router and arbitration metrics are grouped out-of-fold estimates computed on the same pilot. They are not results from a separate held-out test set.
 
 | Verifier | Accuracy |
 |---|---:|
@@ -163,7 +193,7 @@ The grouped out-of-fold expected-gain router achieved:
 
 At the 20% budget, the router selected 17 beneficial and one harmful call.
 
-### Post-call arbitration
+### Pilot post-call arbitration
 
 The overall-signal arbitration model achieved:
 
@@ -175,89 +205,318 @@ Fine-grained signals did not outperform the simpler overall feature set in this 
 
 ## Formal Experiment Plan
 
-If this direction is selected:
+The formal evaluation will be separated from the completed 100-example feasibility study.
 
-1. freeze the current 100 examples and all current pilot conclusions;
-2. prepare grouped train, validation, and held-out test sets;
-3. run ReasonEval and PathFinder on the same GPU;
-4. tune thresholds, features, and budgets using only training and validation data;
-5. freeze the protocol before opening held-out test results;
-6. evaluate the held-out test set once;
-7. report accuracy-budget and accuracy-latency curves;
-8. compute bootstrap confidence intervals and paired significance tests;
-9. compare overall and fine-grained arbitration signals;
-10. retain GenPRM as an alternative baseline if compute permits.
+### 1. Freeze the evaluation protocol
+
+Before running the formal experiment, fix:
+
+* the verifier models and prompting procedures;
+* the candidate pre-call feature set;
+* the routing budgets and utility definition;
+* the post-call arbitration feature sets;
+* the evaluation metrics and random seeds.
+
+PRMBench error-type annotations will be used only for stratification and analysis, not as router inputs.
+
+### 2. Construct grouped data splits
+
+Create approximately:
+
+* 600 training examples;
+* 200 validation examples;
+* 400 held-out test examples.
+
+All variants derived from the same normalized `original_question` must remain in the same split. The splits should preserve step-label and error-type distributions as closely as possible.
+
+The existing 100-example feasibility set will not be included in the final held-out test set.
+
+### 3. Run verifier inference
+
+Run ReasonEval, PathFinder, and the selected comparison verifier on the same examples. Formal runtime measurements must be collected on the same GPU using the same measurement protocol.
+
+For every example, save:
+
+* verifier scores and predictions;
+* PathFinder fine-grained signals;
+* input-token counts;
+* inference runtime;
+* the ground-truth step label.
+
+### 4. Train and select models
+
+Use the training split to fit:
+
+* base-verifier failure prediction;
+* benefit-only routing;
+* harm-aware expected-gain routing;
+* post-call arbitration.
+
+Use the validation split only to select:
+
+* the ReasonEval decision threshold;
+* regularization and model hyperparameters;
+* utility weights `lambda_h` and `mu`;
+* routing and override thresholds.
+
+After these choices are frozen, evaluate once on the held-out test split.
+
+### 5. Report held-out results
+
+Report accuracy and compute trade-offs across fixed budgets, together with group-bootstrap confidence intervals. Results will be compared at equal call budgets and, where reliable same-hardware measurements are available, at equal estimated compute budgets.
+
+An additional ProcessBench evaluation is optional and will be attempted only after the primary PRMBench evaluation is complete.
 
 ## Baselines
 
-The final comparison should include:
+All routing methods will use the same verifier outputs, grouped data splits, and evaluation budgets.
 
-* ReasonEval only;
-* PathFinder only;
-* random routing;
-* low-score routing;
-* uncertainty routing;
-* benefit-only routing;
-* expected-gain routing;
-* always-accept PathFinder cascade;
-* post-call trust arbitration;
-* oracle routing as an unattainable upper bound.
+### Single-verifier baselines
+
+* **ReasonEval only:** use the base verifier for every example.
+* **PathFinder only:** use PathFinder for every example.
+* **GenPRM only:** use GenPRM for every example when the comparison run is available.
+
+### Pre-call routing baselines
+
+* **Random routing:** select examples uniformly at random.
+* **Low-score routing:** call the second verifier for the lowest ReasonEval scores.
+* **Uncertainty routing:** prioritize examples closest to the calibrated ReasonEval threshold.
+* **Failure prediction:** predict whether ReasonEval is wrong without modeling whether the second verifier can correct it.
+* **Benefit-only routing:** predict `P(beneficial)`.
+* **Expected-gain routing:** rank by `P(beneficial) - P(harmful)`.
+* **Cost-aware utility routing:** rank by the proposed risk- and cost-adjusted utility.
+
+Comparing failure prediction with benefit and utility routing tests whether pair-specific correction information is more useful than merely detecting difficult examples.
+
+### Post-call arbitration baselines
+
+* **Always replace:** always accept the second-stage prediction after it is called.
+* **Score-based arbitration:** accept the replacement using a validation-selected PathFinder score threshold.
+* **Learned arbitration:** predict whether replacing ReasonEval is beneficial using the available post-call signals.
+* **Risk-controlled arbitration:** accept a replacement only when its estimated harmful-replacement risk is below a validation-selected level.
+
+### Upper bounds
+
+* **Oracle pre-call routing:** prioritize all beneficial calls before neutral or harmful calls.
+* **Oracle arbitration:** retain whichever verifier is correct for each example.
+
+Oracle results are diagnostic upper bounds and are not deployable methods.
 
 ## Success Criteria
 
-The strongest positive result would show that expected-gain routing:
+### Primary evaluation
 
-* outperforms random and uncertainty routing at equal call budgets;
-* approaches PathFinder-only accuracy with substantially fewer PathFinder calls;
-* provides a better same-hardware accuracy-latency frontier;
-* reduces harmful replacements through post-call arbitration.
+The primary comparison will use the held-out PRMBench test set at a fixed 20% PathFinder call budget.
 
-Raw accuracy does not need to exceed PathFinder-only performance if comparable accuracy is achieved with materially fewer calls.
+The main question is whether pair-specific utility routing achieves higher test accuracy than:
+
+* ReasonEval-only verification;
+* uncertainty routing;
+* base-verifier failure prediction.
+
+The paired differences and group-bootstrap confidence intervals will be reported. Other routing budgets will be treated as secondary trade-off analyses rather than used to select the best test result.
+
+### Formal post-call arbitration criterion
+
+Post-call arbitration will be considered useful if it reduces harmful replacements relative to always accepting PathFinder while retaining a comparable level of beneficial replacements.
+
+The evaluation will report:
+
+* accepted replacement coverage;
+* beneficial replacement rate;
+* harmful replacement rate;
+* final cascade accuracy;
+* risk-coverage curves.
+
+### Minimum technical success
+
+The project must provide:
+
+* reproducible grouped train, validation, and test splits;
+* leakage-free router training and model selection;
+* same-hardware runtime measurements;
+* call-budget and compute-aware comparisons;
+* runnable scripts and documented configurations.
+
+### Interpretation of negative results
+
+A positive result would show that pair-specific utility routing improves the accuracy-compute trade-off beyond confidence and failure-prediction baselines.
+
+A negative result would still be informative if the evaluation demonstrates that verifier complementarity exists but cannot be predicted reliably on held-out data, or that post-call arbitration cannot safely identify harmful replacements. In that case, the project will quantify the gap between oracle complementarity and learnable routing and analyze the conditions under which routing fails.
+
+Therefore, project completion does not depend on reproducing the positive gains observed in the 100-example feasibility study.
 
 ## Expected Compute
 
-The feasibility experiment ran locally and on a rented NVIDIA A40 with 48 GB VRAM.
+The primary formal experiment requires inference from ReasonEval-7B and PathFinder-PRM-7B on approximately 1,200 PRMBench examples.
 
-The formal experiment should run ReasonEval and PathFinder on the same Linux GPU so that runtime and compute comparisons are valid. PathFinder uses two model passes, making selective invocation potentially valuable even though ReasonEval and PathFinder have similar parameter counts.
+A single NVIDIA A40, A100, or comparable GPU with 40-80 GB VRAM should be sufficient. The models will be loaded and evaluated sequentially rather than kept in memory simultaneously.
+
+The compute plan is:
+
+* run ReasonEval once on all fixed examples;
+* run PathFinder once on the same examples using its official two-pass scoring procedure;
+* cache all verifier outputs and reuse them for router experiments;
+* train lightweight routing and arbitration models locally on CPU;
+* use the GPU again only if the dataset, verifier configuration, or inference procedure changes.
+
+Router training, cross-validation, bootstrap evaluation, and threshold selection require negligible compute compared with verifier inference.
+
+GenPRM will be retained as an alternative verifier baseline. A larger official multi-generation and code-execution evaluation will be performed only if time and compute permit; it is not required for completing the primary ReasonEval-PathFinder study.
+
+Formal runtime comparisons will be measured on the same GPU. Runtime measurements from the earlier RTX 4060 and A40 pilot runs will not be combined into a single cost comparison.
+
+Model checkpoints are expected to require tens of gigabytes of persistent storage. Generated JSONL outputs are comparatively small and will remain excluded from Git.
 
 ## Main Risks
 
-1. The 100-example pilot may overestimate router performance.
-2. Benefit and harm classes may be too rare for stable training.
-3. Router features may not generalize to held-out problems.
-4. ReasonEval threshold selection may influence the apparent routing opportunity.
-5. The balanced pilot distribution may not represent natural benchmark data.
-6. PathFinder may be insufficiently more expensive than ReasonEval to justify routing.
-7. Post-call arbitration may help only at high call budgets.
-8. Fine-grained PathFinder signals may add no predictive value.
-9. Existing dynamic-verification work may limit methodological novelty.
-10. Same-hardware latency results may differ from the current mixed-device measurements.
+### 1. Small numbers of beneficial and harmful calls
+
+Even with 1,200 examples, the number of router-positive cases may remain limited.
+
+Mitigation:
+
+* use lightweight regularized models;
+* avoid unnecessarily large feature sets;
+* report group-bootstrap confidence intervals;
+* report the number of beneficial and harmful examples in every split.
+
+### 2. Leakage between related problems
+
+PRMBench may contain multiple modified processes derived from the same original mathematical question.
+
+Mitigation:
+
+* split data by normalized `original_question`;
+* keep every related variant in one split;
+* verify automatically that no group crosses split boundaries.
+
+### 3. Validation overfitting
+
+Repeatedly changing features, thresholds, or utility weights after observing test results would invalidate the held-out evaluation.
+
+Mitigation:
+
+* freeze the protocol before running the test evaluation;
+* select thresholds and hyperparameters using training and validation data only;
+* evaluate the held-out test set once after model selection.
+
+### 4. Threshold sensitivity
+
+The ReasonEval threshold changes which calls are labeled beneficial or harmful. The pilot threshold of `0.96` may not transfer to the formal data.
+
+Mitigation:
+
+* recalibrate the threshold using the formal validation split;
+* report a validation-based sensitivity analysis;
+* never select the threshold using held-out test performance.
+
+### 5. Dataset artifacts and limited generalization
+
+The balanced PRMBench subset may not reflect a natural error distribution, and some modified reasoning steps may contain lexical clues related to correctness.
+
+Mitigation:
+
+* exclude error-type labels from router inputs;
+* inspect performance by error type and relevant lexical patterns;
+* report both balanced and naturally sampled results if time permits;
+* use ProcessBench as an optional external evaluation.
+
+### 6. Unreliable compute comparison
+
+Runtime measured on different GPUs or with different attention implementations is not directly comparable.
+
+Mitigation:
+
+* rerun the primary verifiers on the same GPU;
+* use the same warm-up and timing protocol;
+* report call budgets separately from measured runtime or compute budgets.
+
+### 7. A stronger verifier may dominate routing
+
+If PathFinder is sufficiently accurate and inexpensive, always using it may be preferable to a cascade.
+
+Mitigation:
+
+* compare against PathFinder-only verification;
+* report the full accuracy-cost Pareto curve;
+* treat this outcome as evidence about when routing is or is not worthwhile.
+
+### 8. Rare harmful replacements
+
+Post-call arbitration may be difficult to learn if very few harmful replacements occur.
+
+Mitigation:
+
+* keep the arbitration model lightweight;
+* report risk-coverage curves rather than only classification accuracy;
+* treat post-call arbitration as a secondary contribution if the sample size is insufficient.
+
+### 9. Simplified GenPRM implementation
+
+The current GenPRM feasibility wrapper does not reproduce the complete official multi-generation and code-execution pipeline.
+
+Mitigation:
+
+* use PathFinder as the primary second-stage verifier;
+* describe GenPRM as an alternative baseline;
+* avoid making conclusions about the full official GenPRM system unless it is reproduced.
 
 ## Current Blockers
 
-There are no technical blockers for the candidate proposal.
+There are no remaining technical blockers for the feasibility implementation. The ReasonEval, GenPRM, and PathFinder pipelines have all been executed successfully.
 
-Before starting the formal experiment, the team must:
+Before formal evaluation begins, the following items must be completed:
 
-* select the final project direction;
-* agree on the primary research claim;
-* confirm access to a Linux GPU;
-* freeze the dataset split and evaluation protocol;
-* assign model inference, routing, evaluation, and report responsibilities.
+1. the team must confirm PRM routing as the final project direction;
+2. the formal feature set, utility definition, baselines, and primary metric must be frozen;
+3. the grouped train, validation, and held-out test manifests must be generated and audited;
+4. access to a 40-80 GB GPU and sufficient persistent checkpoint storage must be confirmed;
+5. all primary verifier outputs and runtime measurements must be collected on the same hardware;
+6. team responsibilities for inference, router evaluation, analysis, and report writing must be assigned.
+
+The next coding task is therefore the formal grouped-split and experiment-configuration pipeline, not another modification of the 100-example pilot.
 
 ## Decision
 
-**Passed as a candidate direction.**
+**Recommended as the final project direction, pending team confirmation.**
 
-The feasibility evidence supports ReasonEval-to-PathFinder routing as the primary candidate cascade. GenPRM remains a useful alternative baseline, but the current pilot does not support PathFinder-to-GenPRM routing as a core method.
+The completed feasibility study provides evidence that:
 
-The next decisive step, if selected, is a frozen held-out evaluation.
+* ReasonEval and PathFinder make complementary errors;
+* beneficial and harmful replacements both occur;
+* lightweight grouped out-of-fold routers can predict part of this correction utility;
+* confidence-based routing does not fully capture the available routing signal;
+* PathFinder post-call signals may help identify unsafe replacements.
+
+The formal project will therefore focus on pair-specific, cost-aware utility routing between ReasonEval and PathFinder, with risk-controlled post-call arbitration as a secondary component.
+
+GenPRM will remain an alternative verifier baseline rather than the central system.
+
+The pilot results establish technical feasibility but do not establish held-out generalization, statistical significance, or a final accuracy-compute advantage. These claims depend on the formal grouped train, validation, and test evaluation.
+
+If the team approves this direction, the next milestone is to freeze the evaluation protocol and create the formal split manifests before running any additional verifier inference.
 
 ## Relevant Resources
 
+### Primary models and benchmarks
+
+* [ReasonEval paper](https://arxiv.org/abs/2404.05692)
+* [ReasonEval-7B model](https://huggingface.co/GAIR/ReasonEval-7B)
 * [PathFinder-PRM paper](https://arxiv.org/abs/2505.19706)
-* [PathFinder-PRM repository](https://github.com/declare-lab/PathFinder-PRM)
-* [PathFinder-PRM-7B](https://huggingface.co/declare-lab/PathFinder-PRM-7B)
+* [PathFinder-PRM official code](https://github.com/declare-lab/PathFinder-PRM)
+* [PathFinder-PRM-7B model](https://huggingface.co/declare-lab/PathFinder-PRM-7B)
 * [GenPRM paper](https://arxiv.org/abs/2504.00891)
-* [ReasonEval-7B](https://huggingface.co/GAIR/ReasonEval-7B)
-* [PRMBench Preview](https://huggingface.co/datasets/hitsmy/PRMBench_Preview)
+* [GenPRM official code](https://github.com/RyanLiu112/GenPRM)
+* [PRMBench paper](https://arxiv.org/abs/2501.03124)
+* [PRMBench official code](https://github.com/ssmisya/PRMBench)
+* [PRMBench Preview dataset](https://huggingface.co/datasets/hitsmy/PRMBench_Preview)
+* [ProcessBench paper](https://arxiv.org/abs/2412.06559)
+
+### Related dynamic verification and routing work
+
+* [Dyve: Thinking Fast and Slow for Dynamic Process Verification](https://arxiv.org/abs/2502.11157)
+* [Solve-Detect-Verify: Inference-Time Scaling with Flexible Generative Verifier](https://arxiv.org/abs/2505.11966)
+* [CAMEL: Confidence-Gated Reflection for Reward Modeling](https://arxiv.org/abs/2602.20670)
+* [RouteGuard: Certifying Routing Gain When Complementarity Is Not Enough](https://arxiv.org/abs/2608.07583)
