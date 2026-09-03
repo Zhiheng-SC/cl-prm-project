@@ -97,6 +97,7 @@ experiments/feasibility/prm_router/
 ├── run_genprm.py
 ├── run_pathfinder.py
 ├── inference_io.py
+├── run_formal_inference.py
 ├── analyze_complementarity.py
 ├── evaluate_routing.py
 ├── train_benefit_router.py
@@ -112,7 +113,8 @@ experiments/feasibility/prm_router/
 | `run_disprm.py`                    | Run ReasonEval and save its scores and predictions                                     |
 | `run_genprm.py`                    | Run the Windows-compatible GenPRM feasibility inference                                |
 | `run_pathfinder.py`                | Run the official two-pass PathFinder scoring procedure                                 |
-| `inference_io.py`                  | Validate existing JSONL prefixes for safe interrupted-run resumption                   |
+| `inference_io.py`                  | Validate resume state and record reproducibility metadata                              |
+| `run_formal_inference.py`          | Validate formal splits and plan or execute guarded verifier inference                  |
 | `analyze_complementarity.py`       | Identify beneficial, harmful, and shared verifier outcomes                             |
 | `evaluate_routing.py`              | Evaluate random, low-score, uncertainty, and oracle routing                            |
 | `train_benefit_router.py`          | Train and evaluate a logistic-regression benefit router with out-of-fold predictions   |
@@ -563,18 +565,29 @@ The formal evaluation setup now completed after this feasibility study includes:
 2. excluding its 96 original-question groups from formal data;
 3. creating grouped splits with 600 training, 200 validation, and 400 held-out test examples;
 4. pinning the PRMBench and verifier revisions;
-5. recording dataset provenance, split statistics, and SHA256 hashes in a tracked reference manifest.
+5. recording dataset provenance, split statistics, and SHA256 hashes in a tracked reference manifest;
+6. adding revision-pinned and resumable inference, sidecar metadata, a same-hardware timing protocol, and a guarded formal inference runner.
+
+The runner defaults to a plan-only development pass over train and validation:
+
+```bash
+python experiments/feasibility/prm_router/run_formal_inference.py
+```
+
+Add `--execute` only on the selected common GPU when the team is ready to
+start formal development inference. Test execution is separately locked and
+requires both a validation-selected ReasonEval threshold and
+`--confirm-test-protocol-frozen`.
 
 If the team selects PRM Router, the remaining formal work is:
 
-1. make verifier inference revision-pinned, resumable, and metadata-complete;
-2. run ReasonEval and PathFinder on the same GPU;
-3. select thresholds, features, utility weights, and budgets using training and validation data only;
-4. freeze the routing and arbitration protocol;
-5. evaluate once on the held-out test set;
-6. report accuracy-budget and accuracy-latency curves with group-bootstrap confidence intervals and paired significance tests;
-7. retain GenPRM as an alternative second-stage baseline if time and compute permit;
-8. evaluate a more natural benchmark distribution or ProcessBench only as a secondary extension.
+1. run ReasonEval and PathFinder on train and validation using the same GPU;
+2. select thresholds, features, utility weights, and budgets without test access;
+3. freeze the routing and arbitration protocol;
+4. unlock and evaluate once on the held-out test set;
+5. report accuracy-budget and accuracy-latency curves with group-bootstrap confidence intervals and paired significance tests;
+6. retain GenPRM as an alternative second-stage baseline if time and compute permit;
+7. evaluate a more natural benchmark distribution or ProcessBench only as a secondary extension.
 
 
 ## Relevant Resources
