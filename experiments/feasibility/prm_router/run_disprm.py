@@ -25,8 +25,15 @@ from transformers import (
 )
 from transformers.configuration_utils import PretrainedConfig
 
+from inference_io import (
+    finalize_run_metadata,
+    initialize_run_metadata,
+    prepare_resume,
+)
+
 
 DEFAULT_MODEL = "GAIR/ReasonEval-7B"
+DEFAULT_REVISION = "0a6556ef5c937bb17d265ba681b501fd60056cfe"
 
 
 class ReasonEval7B(MistralPreTrainedModel):
@@ -171,6 +178,7 @@ def evaluate_record(
     tokenizer,
     record: dict,
     model_name: str,
+    model_revision: str,
     threshold: float,
 ) -> dict:
     """Evaluate the current step of one PRMBench record."""
@@ -228,6 +236,7 @@ def evaluate_record(
     result.update(
         {
             "disprm_model": model_name,
+            "disprm_model_revision": model_revision,
             "disprm_threshold": threshold,
             "disprm_probability_negative": probability_negative,
             "disprm_probability_neutral": probability_neutral,
@@ -264,6 +273,12 @@ def main() -> None:
         default=DEFAULT_MODEL,
     )
     parser.add_argument(
+        "--revision",
+        type=str,
+        default=DEFAULT_REVISION,
+        help="Pinned Hugging Face model revision.",
+    )
+    parser.add_argument(
         "--threshold",
         type=float,
         default=0.5,
@@ -276,6 +291,17 @@ def main() -> None:
         help="Only evaluate the first N records.",
     )
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Append after validating an existing output prefix.",
+    )
+    parser.add_argument(
+        "--warmup-examples",
+        type=int,
+        default=3,
+        help="Untimed model warmup examples before measured inference.",
+    )
+    parser.add_argument(
         "--allow-cpu",
         action="store_true",
         help="Allow CPU inference. This will be very slow.",
@@ -283,17 +309,96 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if not torch.cuda.is_available() and not args.allow_cpu:
+    if args.limit is not None and args.limit < 1:
+        raise ValueError("--limit must be at least 1.")
+    if not 0.0 <= args.threshold <= 1.0:
+        raise ValueError("--threshold must be between 0 and 1.")
+    if args.warmup_examples < 0:
+        raise ValueError("--warmup-examples cannot be negative.")
+
+    records = load_jsonl(args.input)
+    if args.limit is not None:
+        records = records[: args.limit]
+
+    resume_state = prepare_resume(
+        output_path=args.output,
+        input_records=records,
+        resume=args.resume,
+        expected_metadata={
+            "disprm_model": args.model,
+            "disprm_model_revision": args.revision,
+            "disprm_threshold": args.threshold,
+        },
+    )
+    pending_records = records[resume_state.completed :]
+
+    if args.resume:
+        print(
+            f"Resume validation passed: {resume_state.completed}/"
+            f"{len(records)} records already complete."
+        )
+
+    correct_count = sum(
+        int(result["disprm_correct"])
+        for result in resume_state.existing_records
+    )
+    total_runtime = sum(
+        float(result["disprm_runtime_seconds"])
+        for result in resume_state.existing_records
+    )
+
+    if pending_records and (
+        not torch.cuda.is_available() and not args.allow_cpu
+    ):
         raise RuntimeError(
             "No CUDA GPU detected. ReasonEval-7B should be run on "
             "the A100/Linux environment. Use --allow-cpu only if "
             "you intentionally want very slow CPU inference."
         )
 
-    records = load_jsonl(args.input)
+    dtype = (
+        torch.bfloat16
+        if torch.cuda.is_available()
+        else torch.float32
+    )
+    metadata_path = initialize_run_metadata(
+        script_path=Path(__file__),
+        repo_root=Path(__file__).resolve().parents[3],
+        input_path=args.input,
+        output_path=args.output,
+        selected_examples=len(records),
+        model_name=args.model,
+        model_revision=args.revision,
+        inference_parameters={
+            "threshold": args.threshold,
+            "dtype": str(dtype).removeprefix("torch."),
+            "allow_cpu": args.allow_cpu,
+            "warmup_examples": args.warmup_examples,
+            "timing_scope": "synchronized_model_forward",
+        },
+        resume=args.resume,
+    )
 
-    if args.limit is not None:
-        records = records[: args.limit]
+    if not pending_records:
+        accuracy = correct_count / len(records)
+        average_runtime = total_runtime / len(records)
+        finalize_run_metadata(
+            metadata_path=metadata_path,
+            output_path=args.output,
+            summary={
+                "examples": len(records),
+                "correct": correct_count,
+                "accuracy": accuracy,
+                "average_runtime_seconds": average_runtime,
+            },
+        )
+        print("ReasonEval output is already complete.")
+        print(f"Accuracy:        {accuracy:.4f}")
+        print(f"Correct:         {correct_count}/{len(records)}")
+        print(f"Average runtime: {average_runtime:.4f}s")
+        print(f"Saved to:        {args.output.resolve()}")
+        print(f"Metadata:        {metadata_path.resolve()}")
+        return
 
     device_description = (
         torch.cuda.get_device_name(0)
@@ -303,45 +408,57 @@ def main() -> None:
 
     print(f"Device: {device_description}")
     print(f"Input examples: {len(records)}")
-    print(f"Loading tokenizer: {args.model}")
+    print(f"Remaining examples: {len(pending_records)}")
+    print(f"Loading tokenizer: {args.model}@{args.revision}")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
-
-    dtype = (
-        torch.bfloat16
-        if torch.cuda.is_available()
-        else torch.float32
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model,
+        revision=args.revision,
     )
 
     print(f"Loading model with dtype={dtype}")
-
     model_load_start = time.perf_counter()
 
     model = ReasonEval7B.from_pretrained(
         args.model,
+        revision=args.revision,
         torch_dtype=dtype,
         device_map="auto",
         low_cpu_mem_usage=True,
     ).eval()
 
     model_load_seconds = time.perf_counter() - model_load_start
+    print(f"Model loaded in {model_load_seconds:.2f} seconds.")
 
-    print(
-        f"Model loaded in {model_load_seconds:.2f} seconds."
-    )
+    warmup_count = min(args.warmup_examples, len(pending_records))
+    if warmup_count:
+        print(f"Warming up on {warmup_count} example(s).")
+        for record in pending_records[:warmup_count]:
+            evaluate_record(
+                model=model,
+                tokenizer=tokenizer,
+                record=record,
+                model_name=args.model,
+                model_revision=args.revision,
+                threshold=args.threshold,
+            )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    correct_count = 0
-    total_runtime = 0.0
-
-    with args.output.open("w", encoding="utf-8") as output_file:
-        for index, record in enumerate(records, start=1):
+    with args.output.open(
+        resume_state.file_mode,
+        encoding="utf-8",
+    ) as output_file:
+        for index, record in enumerate(
+            pending_records,
+            start=resume_state.completed + 1,
+        ):
             result = evaluate_record(
                 model=model,
                 tokenizer=tokenizer,
                 record=record,
                 model_name=args.model,
+                model_revision=args.revision,
                 threshold=args.threshold,
             )
 
@@ -365,13 +482,24 @@ def main() -> None:
 
     accuracy = correct_count / len(records)
     average_runtime = total_runtime / len(records)
+    finalize_run_metadata(
+        metadata_path=metadata_path,
+        output_path=args.output,
+        summary={
+            "examples": len(records),
+            "correct": correct_count,
+            "accuracy": accuracy,
+            "average_runtime_seconds": average_runtime,
+        },
+    )
 
     print()
-    print("ReasonEval smoke test completed.")
+    print("ReasonEval inference completed.")
     print(f"Accuracy:        {accuracy:.4f}")
     print(f"Correct:         {correct_count}/{len(records)}")
     print(f"Average runtime: {average_runtime:.4f}s")
     print(f"Saved to:        {args.output.resolve()}")
+    print(f"Metadata:        {metadata_path.resolve()}")
 
 
 if __name__ == "__main__":

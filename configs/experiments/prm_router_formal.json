@@ -30,6 +30,28 @@
       "revision": "a0fa69768f4524257e1730fec639aa7781c7fa82"
     }
   },
+  "runtime": {
+    "warmup_examples": 3,
+    "exclude_model_loading": true,
+    "cuda_synchronize": true,
+    "same_hardware_required": true
+  },
+  "inference": {
+    "reason_eval": {
+      "development_output_threshold": 0.5
+    },
+    "pathfinder": {
+      "threshold": 0.5,
+      "max_input_tokens": 4096,
+      "attention_implementation": "flash_attention_2",
+      "load_in_4bit": false
+    },
+    "genprm": {
+      "seed": 42,
+      "max_analysis_tokens": 256,
+      "max_input_tokens": 4096
+    }
+  },
   "base_threshold": {
     "selection_split": "validation",
     "selection_metric": "balanced_accuracy"

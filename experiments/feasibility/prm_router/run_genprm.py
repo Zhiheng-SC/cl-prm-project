@@ -22,8 +22,15 @@ from transformers import (
     StoppingCriteriaList,
 )
 
+from inference_io import (
+    finalize_run_metadata,
+    initialize_run_metadata,
+    prepare_resume,
+)
+
 
 MODEL_NAME = "GenPRM/GenPRM-1.5B"
+MODEL_REVISION = "a0fa69768f4524257e1730fec639aa7781c7fa82"
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_INPUT = REPO_ROOT / "data" / "prm_router" / "smoke_test.jsonl"
@@ -65,7 +72,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--model", default=MODEL_NAME)
+    parser.add_argument(
+        "--revision",
+        default=MODEL_REVISION,
+        help="Pinned Hugging Face model revision.",
+    )
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Append after validating an existing output prefix.",
+    )
+    parser.add_argument(
+        "--warmup-examples",
+        type=int,
+        default=3,
+        help="Untimed model warmup examples before measured inference.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-analysis-tokens", type=int, default=256)
     parser.add_argument("--max-input-tokens", type=int, default=3072)
@@ -279,6 +302,10 @@ def run_one(
     result.update(
         {
             "genprm_model": args.model,
+            "genprm_model_revision": args.revision,
+            "genprm_seed_base": args.seed,
+            "genprm_max_analysis_tokens": args.max_analysis_tokens,
+            "genprm_max_input_tokens": args.max_input_tokens,
             "genprm_current_step": current_step,
             "genprm_analysis": analysis,
             "genprm_analysis_complete": analysis_complete,
@@ -304,37 +331,144 @@ def run_one(
 def main() -> None:
     args = parse_args()
 
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA GPU is required for this smoke test.")
+    if args.limit is not None and args.limit < 1:
+        raise ValueError("--limit must be at least 1.")
+    if args.max_analysis_tokens < 1:
+        raise ValueError("--max-analysis-tokens must be positive.")
+    if args.max_input_tokens < 1:
+        raise ValueError("--max-input-tokens must be positive.")
+    if args.warmup_examples < 0:
+        raise ValueError("--warmup-examples cannot be negative.")
 
     records = read_jsonl(args.input)
-
     if args.limit is not None:
         records = records[: args.limit]
+    if not records:
+        raise ValueError(f"No input records were found in {args.input}.")
 
-    print(f"Loading model: {args.model}")
+    resume_state = prepare_resume(
+        output_path=args.output,
+        input_records=records,
+        resume=args.resume,
+        expected_metadata={
+            "genprm_model": args.model,
+            "genprm_model_revision": args.revision,
+            "genprm_seed_base": args.seed,
+            "genprm_max_analysis_tokens": args.max_analysis_tokens,
+            "genprm_max_input_tokens": args.max_input_tokens,
+            "genprm_mode": "analysis_without_code_execution",
+        },
+    )
+    pending_records = records[resume_state.completed :]
+
+    if args.resume:
+        print(
+            f"Resume validation passed: {resume_state.completed}/"
+            f"{len(records)} records already complete."
+        )
+
+    results = list(resume_state.existing_records)
+
+    if pending_records and not torch.cuda.is_available():
+        raise RuntimeError("CUDA GPU is required for GenPRM inference.")
+
+    metadata_path = initialize_run_metadata(
+        script_path=Path(__file__),
+        repo_root=REPO_ROOT,
+        input_path=args.input,
+        output_path=args.output,
+        selected_examples=len(records),
+        model_name=args.model,
+        model_revision=args.revision,
+        inference_parameters={
+            "seed": args.seed,
+            "max_analysis_tokens": args.max_analysis_tokens,
+            "max_input_tokens": args.max_input_tokens,
+            "dtype": "bfloat16",
+            "mode": "analysis_without_code_execution",
+            "warmup_examples": args.warmup_examples,
+            "timing_scope": (
+                "synchronized_analysis_and_judgement_generation"
+            ),
+        },
+        resume=args.resume,
+    )
+
+    if not pending_records:
+        correct = sum(
+            int(result["genprm_correct"]) for result in results
+        )
+        total_runtime = sum(
+            float(result["genprm_runtime_seconds"])
+            for result in results
+        )
+        accuracy = correct / len(records)
+        average_runtime = total_runtime / len(records)
+        finalize_run_metadata(
+            metadata_path=metadata_path,
+            output_path=args.output,
+            summary={
+                "examples": len(records),
+                "correct": correct,
+                "accuracy": accuracy,
+                "average_runtime_seconds": average_runtime,
+            },
+        )
+        print("GenPRM output is already complete.")
+        print(f"Accuracy:        {accuracy:.4f}")
+        print(f"Correct:         {correct}/{len(records)}")
+        print(f"Average runtime: {average_runtime:.4f}s")
+        print(f"Saved to:        {args.output.resolve()}")
+        print(f"Metadata:        {metadata_path.resolve()}")
+        return
+
+    print(f"Loading model: {args.model}@{args.revision}")
     print(f"Input examples: {len(records)}")
+    print(f"Remaining examples: {len(pending_records)}")
     print(f"GPU: {torch.cuda.get_device_name(0)}")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model,
+        revision=args.revision,
+    )
 
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
+        revision=args.revision,
         torch_dtype=torch.bfloat16,
         device_map={"": 0},
         low_cpu_mem_usage=True,
     )
     model.eval()
 
+    warmup_count = min(args.warmup_examples, len(pending_records))
+    if warmup_count:
+        print(f"Warming up on {warmup_count} example(s).")
+        for offset, record in enumerate(
+            pending_records[:warmup_count],
+            start=resume_state.completed,
+        ):
+            run_one(
+                model=model,
+                tokenizer=tokenizer,
+                record=record,
+                args=args,
+                index=offset,
+            )
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    results: list[dict[str, Any]] = []
-
-    with args.output.open("w", encoding="utf-8") as output_file:
-        for index, record in enumerate(records):
+    with args.output.open(
+        resume_state.file_mode,
+        encoding="utf-8",
+    ) as output_file:
+        for index, record in enumerate(
+            pending_records,
+            start=resume_state.completed,
+        ):
             print(
                 f"[{index + 1}/{len(records)}] "
                 f"{record['example_id']} "
@@ -362,18 +496,30 @@ def main() -> None:
                 f"runtime={result['genprm_runtime_seconds']:.2f}s"
             )
 
-    correct = sum(result["genprm_correct"] for result in results)
+    correct = sum(int(result["genprm_correct"]) for result in results)
     accuracy = correct / len(results)
     average_runtime = sum(
-        result["genprm_runtime_seconds"] for result in results
+        float(result["genprm_runtime_seconds"])
+        for result in results
     ) / len(results)
+    finalize_run_metadata(
+        metadata_path=metadata_path,
+        output_path=args.output,
+        summary={
+            "examples": len(results),
+            "correct": correct,
+            "accuracy": accuracy,
+            "average_runtime_seconds": average_runtime,
+        },
+    )
 
     print()
-    print("GenPRM smoke test completed.")
+    print("GenPRM inference completed.")
     print(f"Accuracy:        {accuracy:.4f}")
     print(f"Correct:         {correct}/{len(results)}")
     print(f"Average runtime: {average_runtime:.4f}s")
     print(f"Saved to:        {args.output.resolve()}")
+    print(f"Metadata:        {metadata_path.resolve()}")
 
 
 if __name__ == "__main__":

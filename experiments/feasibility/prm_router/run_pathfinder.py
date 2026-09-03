@@ -17,11 +17,15 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from train_benefit_router import read_records
-
+from inference_io import (
+    finalize_run_metadata,
+    initialize_run_metadata,
+    prepare_resume,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MODEL = "declare-lab/PathFinder-PRM-7B"
+DEFAULT_REVISION = "84a7412511836cb4ed74377d9c703eb5638d814c"
 DEFAULT_INPUT = (
     REPO_ROOT / "data" / "prm_router" / "feasibility_100.jsonl"
 )
@@ -40,16 +44,56 @@ PROMPT_PREFIX = (
 )
 
 
+def read_records(path: Path) -> list[dict[str, Any]]:
+    """Read non-empty UTF-8 JSONL records."""
+    records: list[dict[str, Any]] = []
+
+    with path.open("r", encoding="utf-8") as input_file:
+        for line_number, line in enumerate(input_file, start=1):
+            line = line.strip()
+            if not line:
+                continue
+
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    f"Invalid JSON on line {line_number} of {path}."
+                ) from error
+
+    if not records:
+        raise ValueError(f"No input records were found in {path}.")
+
+    return records
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--model", type=str, default=DEFAULT_MODEL)
     parser.add_argument(
+        "--revision",
+        type=str,
+        default=DEFAULT_REVISION,
+        help="Pinned Hugging Face model revision.",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=None,
         help="Only evaluate the first N records.",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Append after validating an existing output prefix.",
+    )
+    parser.add_argument(
+        "--warmup-examples",
+        type=int,
+        default=3,
+        help="Untimed model warmup examples before measured inference.",
     )
     parser.add_argument(
         "--threshold",
@@ -98,11 +142,15 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--threshold must be between 0 and 1.")
     if args.max_input_tokens < 1:
         raise ValueError("--max-input-tokens must be positive.")
+    if args.warmup_examples < 0:
+        raise ValueError("--warmup-examples cannot be negative.")
     if args.dry_run and args.load_in_4bit:
         raise ValueError(
             "--dry-run does not load model weights, so do not combine it "
             "with --load-in-4bit."
         )
+    if args.dry_run and args.resume:
+        raise ValueError("--resume cannot be combined with --dry-run.")
 
 
 def get_single_token_id(tokenizer, token: str) -> int:
@@ -383,6 +431,7 @@ def run_one(
     result.update(
         {
             "pathfinder_model": args.model,
+            "pathfinder_model_revision": args.revision,
             "pathfinder_attention_implementation": (
                 args.attention_implementation
             ),
@@ -400,6 +449,7 @@ def run_one(
             "pathfinder_gate_passed": gate_passed,
             "pathfinder_official_score": official_score,
             "pathfinder_threshold": args.threshold,
+            "pathfinder_max_input_tokens": args.max_input_tokens,
             "pathfinder_prediction": prediction,
             "pathfinder_correct": prediction == label,
             "pathfinder_first_input_tokens": first_input_tokens,
@@ -510,6 +560,7 @@ def run_dry_run(
 def load_model(args: argparse.Namespace):
     model_kwargs: dict[str, Any] = {
         "device_map": "auto",
+        "revision": args.revision,
         "trust_remote_code": True,
         "attn_implementation": args.attention_implementation,
     }
@@ -561,9 +612,102 @@ def main() -> None:
     if not records:
         raise ValueError(f"No input records were found in {args.input}.")
 
-    print(f"Loading tokenizer: {args.model}")
+    resume_state = None
+    pending_records = records
+
+    if not args.dry_run:
+        quantization = (
+            "bitsandbytes_nf4" if args.load_in_4bit else "none"
+        )
+        resume_state = prepare_resume(
+            output_path=args.output,
+            input_records=records,
+            resume=args.resume,
+            expected_metadata={
+                "pathfinder_model": args.model,
+                "pathfinder_model_revision": args.revision,
+                "pathfinder_attention_implementation": (
+                    args.attention_implementation
+                ),
+                "pathfinder_threshold": args.threshold,
+                "pathfinder_max_input_tokens": args.max_input_tokens,
+                "pathfinder_quantization": quantization,
+            },
+        )
+        pending_records = records[resume_state.completed :]
+
+        if args.resume:
+            print(
+                f"Resume validation passed: {resume_state.completed}/"
+                f"{len(records)} records already complete."
+            )
+
+        if (
+            pending_records
+            and not args.load_in_4bit
+            and not torch.cuda.is_available()
+        ):
+            raise RuntimeError(
+                "Full-precision PathFinder inference requires a CUDA GPU."
+            )
+
+        dtype_name = "float16" if args.load_in_4bit else "bfloat16"
+        metadata_path = initialize_run_metadata(
+            script_path=Path(__file__),
+            repo_root=REPO_ROOT,
+            input_path=args.input,
+            output_path=args.output,
+            selected_examples=len(records),
+            model_name=args.model,
+            model_revision=args.revision,
+            inference_parameters={
+                "threshold": args.threshold,
+                "max_input_tokens": args.max_input_tokens,
+                "attention_implementation": (
+                    args.attention_implementation
+                ),
+                "quantization": quantization,
+                "dtype": dtype_name,
+                "warmup_examples": args.warmup_examples,
+                "timing_scope": "synchronized_two_pass_forward",
+            },
+            resume=args.resume,
+        )
+
+        if not pending_records:
+            correct_count = sum(
+                int(result["pathfinder_correct"])
+                for result in resume_state.existing_records
+            )
+            total_runtime = sum(
+                float(result["pathfinder_runtime_seconds"])
+                for result in resume_state.existing_records
+            )
+            accuracy = correct_count / len(records)
+            average_runtime = total_runtime / len(records)
+            finalize_run_metadata(
+                metadata_path=metadata_path,
+                output_path=args.output,
+                summary={
+                    "examples": len(records),
+                    "correct": correct_count,
+                    "accuracy": accuracy,
+                    "average_runtime_seconds": average_runtime,
+                },
+            )
+            print("PathFinder output is already complete.")
+            print(f"Examples:        {len(records)}")
+            print(f"Accuracy:        {accuracy:.4f}")
+            print(f"Correct:         {correct_count}/{len(records)}")
+            print(f"Average runtime: {average_runtime:.4f}s")
+            print(f"Saved to:        {args.output.resolve()}")
+            print(f"Metadata:        {metadata_path.resolve()}")
+            return
+
+    print(f"Loading tokenizer: {args.model}@{args.revision}")
     tokenizer = AutoTokenizer.from_pretrained(
         args.model,
+        revision=args.revision,
         trust_remote_code=True,
     )
     mask_token_id = get_single_token_id(tokenizer, "<extra>")
@@ -581,15 +725,46 @@ def main() -> None:
         )
         return
 
-    print(f"Loading model: {args.model}")
+    if resume_state is None:
+        raise AssertionError("Resume state was not initialized.")
+
+    print(f"Remaining examples: {len(pending_records)}")
+    print(f"Loading model: {args.model}@{args.revision}")
     model = load_model(args)
+
+    warmup_count = min(args.warmup_examples, len(pending_records))
+    if warmup_count:
+        print(f"Warming up on {warmup_count} example(s).")
+        for record in pending_records[:warmup_count]:
+            run_one(
+                record=record,
+                model=model,
+                tokenizer=tokenizer,
+                positive_token_id=positive_token_id,
+                negative_token_id=negative_token_id,
+                mask_token_id=mask_token_id,
+                args=args,
+            )
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    correct_count = 0
-    runtime_values: list[float] = []
+    correct_count = sum(
+        int(result["pathfinder_correct"])
+        for result in resume_state.existing_records
+    )
+    runtime_values = [
+        float(result["pathfinder_runtime_seconds"])
+        for result in resume_state.existing_records
+    ]
 
-    with args.output.open("w", encoding="utf-8") as output_file:
-        for index, record in enumerate(records, start=1):
+    with args.output.open(
+        resume_state.file_mode,
+        encoding="utf-8",
+    ) as output_file:
+        for index, record in enumerate(
+            pending_records,
+            start=resume_state.completed + 1,
+        ):
             result = run_one(
                 record=record,
                 model=model,
@@ -617,6 +792,16 @@ def main() -> None:
 
     accuracy = correct_count / len(records)
     average_runtime = sum(runtime_values) / len(runtime_values)
+    finalize_run_metadata(
+        metadata_path=metadata_path,
+        output_path=args.output,
+        summary={
+            "examples": len(records),
+            "correct": correct_count,
+            "accuracy": accuracy,
+            "average_runtime_seconds": average_runtime,
+        },
+    )
     print()
     print("PathFinder inference completed.")
     print(f"Examples:        {len(records)}")
@@ -624,6 +809,7 @@ def main() -> None:
     print(f"Correct:         {correct_count}/{len(records)}")
     print(f"Average runtime: {average_runtime:.4f}s")
     print(f"Saved to:        {args.output.resolve()}")
+    print(f"Metadata:        {metadata_path.resolve()}")
 
 
 if __name__ == "__main__":
