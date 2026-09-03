@@ -296,6 +296,12 @@ def main() -> None:
         help="Append after validating an existing output prefix.",
     )
     parser.add_argument(
+        "--warmup-examples",
+        type=int,
+        default=3,
+        help="Untimed model warmup examples before measured inference.",
+    )
+    parser.add_argument(
         "--allow-cpu",
         action="store_true",
         help="Allow CPU inference. This will be very slow.",
@@ -307,6 +313,8 @@ def main() -> None:
         raise ValueError("--limit must be at least 1.")
     if not 0.0 <= args.threshold <= 1.0:
         raise ValueError("--threshold must be between 0 and 1.")
+    if args.warmup_examples < 0:
+        raise ValueError("--warmup-examples cannot be negative.")
 
     records = load_jsonl(args.input)
     if args.limit is not None:
@@ -365,6 +373,8 @@ def main() -> None:
             "threshold": args.threshold,
             "dtype": str(dtype).removeprefix("torch."),
             "allow_cpu": args.allow_cpu,
+            "warmup_examples": args.warmup_examples,
+            "timing_scope": "synchronized_model_forward",
         },
         resume=args.resume,
     )
@@ -419,6 +429,19 @@ def main() -> None:
 
     model_load_seconds = time.perf_counter() - model_load_start
     print(f"Model loaded in {model_load_seconds:.2f} seconds.")
+
+    warmup_count = min(args.warmup_examples, len(pending_records))
+    if warmup_count:
+        print(f"Warming up on {warmup_count} example(s).")
+        for record in pending_records[:warmup_count]:
+            evaluate_record(
+                model=model,
+                tokenizer=tokenizer,
+                record=record,
+                model_name=args.model,
+                model_revision=args.revision,
+                threshold=args.threshold,
+            )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
