@@ -17,9 +17,6 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from train_benefit_router import read_records
-
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MODEL = "declare-lab/PathFinder-PRM-7B"
 DEFAULT_INPUT = (
@@ -38,6 +35,29 @@ PROMPT_PREFIX = (
     "evaluate the mathemetical correctness, logic consistency of the "
     "current step and whether it will lead to the correct final solution"
 )
+
+
+def read_records(path: Path) -> list[dict[str, Any]]:
+    """Read non-empty UTF-8 JSONL records."""
+    records: list[dict[str, Any]] = []
+
+    with path.open("r", encoding="utf-8") as input_file:
+        for line_number, line in enumerate(input_file, start=1):
+            line = line.strip()
+            if not line:
+                continue
+
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    f"Invalid JSON on line {line_number} of {path}."
+                ) from error
+
+    if not records:
+        raise ValueError(f"No input records were found in {path}.")
+
+    return records
 
 
 def parse_args() -> argparse.Namespace:
