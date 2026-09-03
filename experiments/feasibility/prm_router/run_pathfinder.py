@@ -90,6 +90,12 @@ def parse_args() -> argparse.Namespace:
         help="Append after validating an existing output prefix.",
     )
     parser.add_argument(
+        "--warmup-examples",
+        type=int,
+        default=3,
+        help="Untimed model warmup examples before measured inference.",
+    )
+    parser.add_argument(
         "--threshold",
         type=float,
         default=0.5,
@@ -136,6 +142,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--threshold must be between 0 and 1.")
     if args.max_input_tokens < 1:
         raise ValueError("--max-input-tokens must be positive.")
+    if args.warmup_examples < 0:
+        raise ValueError("--warmup-examples cannot be negative.")
     if args.dry_run and args.load_in_4bit:
         raise ValueError(
             "--dry-run does not load model weights, so do not combine it "
@@ -660,6 +668,8 @@ def main() -> None:
                 ),
                 "quantization": quantization,
                 "dtype": dtype_name,
+                "warmup_examples": args.warmup_examples,
+                "timing_scope": "synchronized_two_pass_forward",
             },
             resume=args.resume,
         )
@@ -721,6 +731,21 @@ def main() -> None:
     print(f"Remaining examples: {len(pending_records)}")
     print(f"Loading model: {args.model}@{args.revision}")
     model = load_model(args)
+
+    warmup_count = min(args.warmup_examples, len(pending_records))
+    if warmup_count:
+        print(f"Warming up on {warmup_count} example(s).")
+        for record in pending_records[:warmup_count]:
+            run_one(
+                record=record,
+                model=model,
+                tokenizer=tokenizer,
+                positive_token_id=positive_token_id,
+                negative_token_id=negative_token_id,
+                mask_token_id=mask_token_id,
+                args=args,
+            )
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
     correct_count = sum(
