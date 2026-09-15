@@ -1,0 +1,20 @@
+# Shared dependencies for the verified RunPod PyTorch image.
+#
+# PyTorch and FlashAttention are intentionally excluded. They are
+# CUDA- and ABI-coupled binary packages supplied by the selected RunPod
+# image. Reinstalling either package can make the other fail to import.
+#
+# Verified cloud environment:
+#   Python 3.12.x
+#   torch 2.8.0+cu128
+#   flash-attn 2.8.3.post1
+#
+# Run scripts/bootstrap_runpod.sh from the repository root. It validates
+# the binary stack before and after installing these packages.
+
+numpy==1.26.4
+scipy==1.15.3
+scikit-learn==1.5.2
+transformers==4.48.2
+datasets==4.8.5
+accelerate==1.2.0

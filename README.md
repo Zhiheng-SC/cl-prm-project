@@ -17,12 +17,16 @@ The project is ready for a final team decision. Formal held-out evaluation has n
 - deterministic grouped train, validation, and test splits are defined;
 - a tracked manifest records dataset provenance, split statistics, and SHA256 hashes.
 
-The reported feasibility results remain exploratory and are not final held-out benchmark results.
+The original 100-example pilot has now been confirmed by a 200-example
+expanded feasibility study with five grouped-CV seeds. The reported
+feasibility results remain exploratory and are not final held-out benchmark
+results.
 
 See:
 
 - [PRM Router proposal](docs/proposals/prm_router.md)
 - [PRM Router feasibility study](experiments/feasibility/prm_router/README.md)
+- [Expanded 200-example feasibility results](docs/results/prm_router_expanded_feasibility_200.md)
 
 ## Primary Candidate
 
@@ -68,11 +72,19 @@ The empty `src/cl_prm/` package is reserved for reusable formal router, IO, and 
 
 The local ReasonEval and GenPRM feasibility experiments used Python 3.10 with an NVIDIA RTX 4060 Laptop GPU. PathFinder feasibility inference used Linux, BF16, Flash Attention 2, and an NVIDIA A40.
 
-Install the PyTorch build appropriate for the target CUDA environment first, then install the common dependencies:
+For the local Windows environment, install the PyTorch build appropriate
+for the target CUDA version before installing `requirements.txt`.
+
+The verified RunPod image already provides a compatible PyTorch,
+CUDA, and FlashAttention binary stack. Do not replace that stack with the
+local requirements file. Use:
 
 ```bash
-pip install -r requirements.txt
+bash scripts/bootstrap_runpod.sh
 ```
+
+See [RunPod environment](docs/runpod.md) for the verified versions, secrets,
+storage policy, data reconstruction, and startup workflow.
 
 The formal experiment must record the exact Python, PyTorch, Transformers, CUDA, attention-backend, and GPU versions used for inference.
 

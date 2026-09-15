@@ -4,6 +4,12 @@
 
 **Feasibility decision: passed. Final team selection is pending.**
 
+The original 100-example study has been confirmed by a 200-example expanded
+study using five original-question-grouped OOF seeds. At the primary 20%
+PathFinder-call budget, mean router accuracy is `0.7740` versus a mean random
+baseline of `0.7069`; the across-seed standard deviation is `0.0058`.
+See [the frozen expanded-feasibility record](../../../docs/results/prm_router_expanded_feasibility_200.md).
+
 This preliminary study confirms that:
 
 1. ReasonEval, GenPRM, and PathFinder inference pipelines are runnable.
