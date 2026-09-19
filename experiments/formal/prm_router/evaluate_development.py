@@ -121,6 +121,7 @@ def main() -> None:
         raise ValueError("--reason-eval-threshold must be in [0, 1].")
 
     config = json.loads(args.config.read_text(encoding="utf-8"))
+    validate_formal_config(config)
     routing_config = config["routing"]
     cost_config = routing_config["cost_aware"]
     diagnostic_config = config["evaluation"]["diagnostic_analyses"]
