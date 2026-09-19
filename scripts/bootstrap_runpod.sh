@@ -79,7 +79,7 @@ verify_binary_stack
 echo "Installing RunPod-safe project dependencies..."
 python -m pip install --upgrade pip
 python -m pip install -r requirements-runpod.txt
-python -m pip install -e . --no-deps
+python -m pip install -e . --no-deps --no-build-isolation
 python -m pip check
 
 echo "Rechecking the CUDA binary stack after installation..."
