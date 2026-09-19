@@ -86,8 +86,7 @@ def validate_formal_config(config: dict[str, Any]) -> None:
     )
 
     primary_budget = float(routing["primary_call_budget"])
-    if not 0.0 <= primary_budget <= 1.0:
-        raise ValueError("routing.primary_call_budget must be in [0, 1].")
+    _require_equal(primary_budget, 0.2, "routing.primary_call_budget")
 
     secondary_budgets = [float(value) for value in routing["secondary_call_budgets"]]
     if any(not 0.0 <= value <= 1.0 for value in secondary_budgets):
@@ -121,10 +120,19 @@ def validate_formal_config(config: dict[str, Any]) -> None:
         "validation",
         "routing.cost_aware.selection_split",
     )
+    _require_equal(
+        cost["selection_rule"],
+        "maximize_validation_accuracy_at_primary_call_budget_then_minimize_measured_runtime",
+        "routing.cost_aware.selection_rule",
+    )
     if float(cost["ridge_alpha"]) < 0.0:
         raise ValueError("routing.cost_aware.ridge_alpha must be non-negative.")
     if not cost["lambda_h_candidates"] or not cost["mu_candidates"]:
         raise ValueError("Cost-aware lambda_h and mu candidate grids must be non-empty.")
+    if any(float(value) < 0.0 for value in cost["lambda_h_candidates"]):
+        raise ValueError("routing.cost_aware.lambda_h_candidates must be non-negative.")
+    if any(float(value) < 0.0 for value in cost["mu_candidates"]):
+        raise ValueError("routing.cost_aware.mu_candidates must be non-negative.")
 
     _require_equal(
         evaluation["primary_metric"],
@@ -141,6 +149,11 @@ def validate_formal_config(config: dict[str, Any]) -> None:
         True,
         "evaluation.same_hardware_runtime_required",
     )
+    if int(evaluation["bootstrap_samples"]) <= 0:
+        raise ValueError("evaluation.bootstrap_samples must be positive.")
+    confidence_level = float(evaluation["confidence_level"])
+    if not 0.0 < confidence_level < 1.0:
+        raise ValueError("evaluation.confidence_level must be in (0, 1).")
     _require_equal(
         bool(test_lock["require_protocol_frozen"]),
         True,
