@@ -18,6 +18,8 @@ from cl_prm.evaluation.cost import (
     make_cost_predictor,
     selected_runtime,
 )
+from cl_prm.utils.formal_config import validate_formal_config
+
 from cl_prm.evaluation.routing import (
     final_predictions,
     gain_probabilities,
