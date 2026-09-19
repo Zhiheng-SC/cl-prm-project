@@ -2,7 +2,7 @@
 
 ## Status
 
-**Candidate ready for team decision. Preliminary feasibility passed; formal held-out evaluation has not yet started.**
+**Selected primary project direction. Expanded feasibility has passed; formal held-out evaluation has not yet started.**
 
 The recommended primary system is:
 
@@ -12,19 +12,21 @@ GenPRM is retained as an alternative second-stage comparison baseline.
 
 ## Research Question
 
-Can pair-specific correction utility predict when one process verifier should override another more reliably than confidence-based escalation?
+Can pair-specific correction utility allocate expensive process-verification compute more effectively than confidence- or difficulty-based routing, when correction benefit, harmful replacement risk, and inference cost are considered?
 
 The project studies two related decisions:
 
 1. **Pre-call routing:** is the expected correction benefit worth the additional verification cost?
 2. **Post-call arbitration:** after observing the second verifier, is replacing the base judgement sufficiently reliable?
 
-The formal study addresses four research questions:
+The formal study addresses four primary research questions:
 
-1. **RQ1:** Do complementary verifier errors translate into learnable held-out routing gains?
-2. **RQ2:** Does pair-specific expected utility outperform uncertainty and base-verifier failure prediction?
-3. **RQ3:** Can risk-controlled post-call arbitration reduce harmful replacements?
-4. **RQ4 (optional):** Do routing gains transfer from PRMBench to ProcessBench?
+1. **RQ1 — Complementarity:** Do ReasonEval and PathFinder exhibit enough complementary errors to create exploitable routing headroom?
+2. **RQ2 — Pair-specific utility:** Does pair-specific expected correction utility outperform uncertainty and base-verifier failure prediction on held-out data?
+3. **RQ3 — Compute-aware routing:** Does incorporating predicted additional inference cost improve the accuracy-compute trade-off relative to call-budget-only routing?
+4. **RQ4 — Risk-controlled arbitration:** Can post-call evidence reduce harmful replacements without sacrificing too many beneficial corrections?
+
+Cross-dataset transfer to ProcessBench and a formal ReasonEval-to-GenPRM comparison are optional extensions after the primary PRMBench study is complete.
 
 ## Motivation
 
@@ -63,7 +65,7 @@ The formal extension will additionally study a cost- and risk-aware utility:
 
 `utility = P(beneficial) - lambda_h * P(harmful) - mu * predicted additional cost`
 
-The additional cost will be estimated from same-hardware measurements and input-derived information such as token length. The utility weights and routing threshold must be selected using training and validation data only.
+The additional cost term must be available before PathFinder is called. A lightweight cost predictor will therefore be trained on the formal training split to predict PathFinder runtime from pre-call features such as token/character length and step position. Measured PathFinder runtime is used as the prediction target and for final compute accounting, but never as an input to the routing decision for the same example. Predicted cost is normalized by the median measured PathFinder runtime on the training split. The utility weights, cost-predictor hyperparameters, and routing threshold must be selected using training and validation data only.
 
 Under a fixed compute budget, the router ranks examples by predicted utility. It may abstain and retain ReasonEval when the predicted utility does not exceed a validation-calibrated threshold.
 
@@ -150,9 +152,11 @@ The intended contributions are:
 
 * a controlled analysis of beneficial, neutral, and harmful replacements between independently trained PRMs;
 * comparison of base-verifier failure prediction with pair-specific benefit and expected-utility routing;
-* cost-aware routing based on same-hardware measurements rather than call percentage alone;
-* risk-controlled post-call arbitration for verifier disagreement;
-* grouped held-out evaluation and, if feasible, cross-dataset evaluation.
+* cost-aware routing using a leakage-free pre-call cost predictor trained against same-hardware PathFinder runtimes;
+* mechanism analysis showing where beneficial and harmful calls arise across ReasonEval confidence, reasoning-step position, error type, and input length;
+* an oracle-versus-learnability decomposition that quantifies how much available correction headroom the learned router captures;
+* risk-controlled post-call arbitration for verifier disagreement as a secondary component;
+* grouped held-out evaluation and, if feasible, verifier-pair or cross-dataset extensions.
 
 RouteGuard provides closely related motivation for distinguishing oracle complementarity from learnable routing gain and for guarding against small-sample overestimation. This project applies those concerns specifically to step-level process verification and additionally studies post-call evidence from PathFinder.
 
@@ -203,6 +207,12 @@ The overall-signal arbitration model achieved:
 
 Fine-grained signals did not outperform the simpler overall feature set in this pilot. They are therefore retained as a predefined ablation rather than a primary positive claim.
 
+### Expanded 200-example feasibility
+
+A subsequent development-only feasibility study used the first 200 records of the frozen formal training split (170 original-question groups) and left validation and test untouched. ReasonEval accuracy at the development threshold of 0.50 was 0.680, PathFinder accuracy was 0.815, and the full pairwise oracle upper bound was 0.865. Across five grouped-CV seeds, mean expected-gain-router accuracy was 0.774 at the primary 20% PathFinder budget and 0.827 at 40%, with mean benefit average precision of 0.629. These results are development evidence only and are not final held-out claims.
+
+The expanded study is considered complete. No additional feasibility-scale GPU inference is required before formal train-and-validation inference.
+
 ## Formal Experiment Plan
 
 The formal evaluation will be separated from the completed 100-example feasibility study.
@@ -250,6 +260,7 @@ Use the training split to fit:
 * base-verifier failure prediction;
 * benefit-only routing;
 * harm-aware expected-gain routing;
+* a lightweight PathFinder runtime predictor using pre-call features only;
 * post-call arbitration.
 
 Use the validation split only to select:
@@ -257,15 +268,18 @@ Use the validation split only to select:
 * the ReasonEval decision threshold;
 * regularization and model hyperparameters;
 * utility weights `lambda_h` and `mu`;
+* cost-predictor hyperparameters;
 * routing and override thresholds.
 
 After these choices are frozen, evaluate once on the held-out test split.
 
 ### 5. Report held-out results
 
-Report accuracy and compute trade-offs across fixed budgets, together with group-bootstrap confidence intervals. Results will be compared at equal call budgets and, where reliable same-hardware measurements are available, at equal estimated compute budgets.
+Report accuracy and compute trade-offs across fixed budgets, together with group-bootstrap confidence intervals. Results will be compared both at equal PathFinder call budgets and using measured same-hardware sequential cascade runtime.
 
-An additional ProcessBench evaluation is optional and will be attempted only after the primary PRMBench evaluation is complete.
+Pre-specified diagnostic analyses will report beneficial and harmful replacement rates by ReasonEval-confidence bin, reasoning-step-position bin, PRMBench error type, and input-length bin. Error-type annotations are analysis-only and are never router inputs. The report will also include an oracle-learnability decomposition, including the fraction of available pairwise oracle headroom captured by the learned router.
+
+An additional ProcessBench evaluation and a formal ReasonEval-to-GenPRM pair comparison are optional and will be attempted only after the primary PRMBench evaluation is complete.
 
 ## Baselines
 
@@ -285,7 +299,7 @@ All routing methods will use the same verifier outputs, grouped data splits, and
 * **Failure prediction:** predict whether ReasonEval is wrong without modeling whether the second verifier can correct it.
 * **Benefit-only routing:** predict `P(beneficial)`.
 * **Expected-gain routing:** rank by `P(beneficial) - P(harmful)`.
-* **Cost-aware utility routing:** rank by the proposed risk- and cost-adjusted utility.
+* **Cost-aware utility routing:** rank by the proposed risk- and cost-adjusted utility using predicted pre-call PathFinder cost; realized PathFinder runtime is used only for evaluation.
 
 Comparing failure prediction with benefit and utility routing tests whether pair-specific correction information is more useful than merely detecting difficult examples.
 
@@ -309,13 +323,13 @@ Oracle results are diagnostic upper bounds and are not deployable methods.
 
 The primary comparison will use the held-out PRMBench test set at a fixed 20% PathFinder call budget.
 
-The main question is whether pair-specific utility routing achieves higher test accuracy than:
+The main confirmatory question is whether pair-specific expected-gain routing achieves higher test accuracy than:
 
 * ReasonEval-only verification;
 * uncertainty routing;
 * base-verifier failure prediction.
 
-The paired differences and group-bootstrap confidence intervals will be reported. Other routing budgets will be treated as secondary trade-off analyses rather than used to select the best test result.
+The paired differences and group-bootstrap confidence intervals will be reported. Cost-aware utility, measured accuracy-runtime Pareto curves, other routing budgets, post-call arbitration, and mechanism analyses are pre-specified secondary analyses rather than opportunities to redefine the primary test result after seeing the held-out data.
 
 ### Formal post-call arbitration criterion
 
@@ -471,18 +485,17 @@ The formal configuration and leakage-controlled split manifests are complete. Da
 
 Before formal verifier inference begins, the following items remain:
 
-1. the team must confirm PRM routing as the final project direction;
-2. utility-weight search spaces, validation selection rules, and the final comparison baseline must be frozen in the experiment configuration;
-3. the inference wrappers must support pinned revisions, safe resume, and complete run metadata;
-4. access to a shared 40-80 GB GPU and persistent artifact storage must be confirmed;
-5. all primary verifier outputs and runtime measurements must be collected on the same hardware;
-6. team responsibilities for inference, router evaluation, analysis, and report writing must be assigned.
+1. utility-weight search spaces, cost-prediction rules, validation selection rules, and the final comparison baselines must be frozen in the experiment configuration;
+2. the inference wrappers must support pinned revisions, safe resume, and complete run metadata;
+3. access to a shared 40-80 GB GPU and persistent artifact storage must be confirmed;
+4. all primary verifier outputs and runtime measurements must be collected on the same hardware;
+5. team responsibilities for inference, router evaluation, analysis, and report writing should be assigned before report integration.
 
 The next coding task is formal inference engineering, followed by train-and-validation inference. The 100-example pilot should not be modified further.
 
 ## Decision
 
-**Recommended as the final project direction, pending team confirmation.**
+**Selected as the primary project direction for formal evaluation.**
 
 The completed feasibility study provides evidence that:
 
@@ -498,7 +511,7 @@ GenPRM will remain an alternative verifier baseline rather than the central syst
 
 The pilot results establish technical feasibility but do not establish held-out generalization, statistical significance, or a final accuracy-compute advantage. These claims depend on the formal grouped train, validation, and test evaluation.
 
-If the team approves this direction, the next milestone is to freeze the evaluation protocol and create the formal split manifests before running any additional verifier inference.
+The next milestone is to freeze the updated evaluation protocol, validate the new cost-aware and diagnostic analysis code on existing development outputs, and then run complete formal train-and-validation inference. The held-out test remains locked until all validation-selected choices are frozen.
 
 ## Relevant Resources
 
