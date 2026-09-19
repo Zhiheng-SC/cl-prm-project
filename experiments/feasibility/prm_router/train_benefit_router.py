@@ -15,11 +15,16 @@ from statistics import mean, pstdev
 from typing import Any
 
 import numpy as np
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.model_selection import StratifiedKFold
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+
+from cl_prm.data.records import read_records, record_key
+from cl_prm.evaluation.routing import (
+    FEATURE_NAMES,
+    build_features,
+    make_router,
+    routing_accuracy,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -45,18 +50,6 @@ DEFAULT_OUTPUT = (
     / "benefit_router_oof.json"
 )
 
-FEATURE_NAMES = [
-    "disprm_score",
-    "distance_to_threshold",
-    "disprm_predicted_correct",
-    "step_position",
-    "current_step",
-    "total_steps",
-    "question_characters",
-    "prefix_characters",
-    "current_step_characters",
-]
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -68,103 +61,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--random-trials", type=int, default=1000)
     return parser.parse_args()
-
-
-def read_records(path: Path) -> list[dict[str, Any]]:
-    text = path.read_text(encoding="utf-8-sig").strip()
-
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        return [
-            json.loads(line)
-            for line in text.splitlines()
-            if line.strip()
-        ]
-
-    if isinstance(data, list):
-        return data
-
-    if isinstance(data, dict):
-        return [data]
-
-    raise ValueError(f"Unsupported JSON structure in {path}")
-
-
-def record_key(record: dict[str, Any]) -> tuple[str, int]:
-    return str(record["example_id"]), int(record["current_step"])
-
-
-def build_features(
-    record: dict[str, Any],
-    score: float,
-    threshold: float,
-) -> list[float]:
-    steps = record.get("steps", [])
-    question = str(record.get("question", ""))
-    current_step_text = str(
-        record.get(
-            "current_step_text",
-            steps[-1] if steps else "",
-        )
-    )
-    prefix_text = "\n".join(str(step) for step in steps)
-
-    current_step = int(record["current_step"])
-    total_steps = int(record.get("total_steps", current_step))
-
-    step_position = float(
-        record.get(
-            "step_position",
-            current_step / max(total_steps, 1),
-        )
-    )
-
-    predicted_correct = int(score >= threshold)
-
-    return [
-        score,
-        abs(score - threshold),
-        float(predicted_correct),
-        step_position,
-        float(current_step),
-        float(total_steps),
-        float(len(question)),
-        float(len(prefix_text)),
-        float(len(current_step_text)),
-    ]
-
-
-def make_router(seed: int) -> Pipeline:
-    return Pipeline(
-        [
-            ("scaler", StandardScaler()),
-            (
-                "classifier",
-                LogisticRegression(
-                    class_weight="balanced",
-                    solver="liblinear",
-                    max_iter=2000,
-                    random_state=seed,
-                ),
-            ),
-        ]
-    )
-
-
-def routing_accuracy(
-    labels: np.ndarray,
-    dis_predictions: np.ndarray,
-    gen_predictions: np.ndarray,
-    routed_indices: set[int],
-) -> float:
-    final_predictions = dis_predictions.copy()
-
-    if routed_indices:
-        selected = np.array(sorted(routed_indices), dtype=int)
-        final_predictions[selected] = gen_predictions[selected]
-
-    return float(np.mean(final_predictions == labels))
 
 
 def main() -> None:
