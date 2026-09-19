@@ -10,7 +10,7 @@ The PRM Router feasibility study is complete and has passed the feasibility chec
 
 GenPRM is retained as an alternative second-stage comparison baseline.
 
-The project is ready for a final team decision. Formal held-out evaluation has not started. Preparation for that evaluation is complete:
+The PRM Router has been selected as the primary project direction. Formal held-out evaluation has not started. Preparation for that evaluation is complete:
 
 - dataset and model revisions are pinned;
 - the 100-example feasibility pilot is excluded from formal data;
@@ -43,12 +43,12 @@ The completed feasibility study includes:
 - post-call trust arbitration;
 - explicit pilot limitations and a held-out evaluation plan.
 
-## Alternative Candidates
+## Alternative / Archived Directions
 
-OVM and StepBADGE are retained as early candidate placeholders while the final team decision is pending. No completed feasibility results for those directions are currently recorded in this repository.
+OVM completed a separate feasibility study and is retained as an archived alternative direction. Its compact evaluation summaries remain in GitHub, while raw generated seed outputs are stored in the team's private Hugging Face artifact repository. StepBADGE remains an unselected proposal only.
 
-- [OVM placeholder](docs/proposals/ovm.md)
-- [StepBADGE placeholder](docs/proposals/stepbadge.md)
+- [OVM feasibility record](docs/proposals/ovm.md)
+- [StepBADGE proposal](docs/proposals/stepbadge.md)
 
 ## Repository Structure
 
@@ -66,7 +66,7 @@ cl-prm-project/
 └── README.md
 ```
 
-The empty `src/cl_prm/` package is reserved for reusable formal router, IO, and evaluation code. Formal shared entry points will be added only after the team confirms the project direction.
+The empty `src/cl_prm/` package is reserved for reusable formal router, IO, and evaluation code. The current guarded formal entry points remain under `experiments/feasibility/prm_router/` until the formal workflow stabilizes.
 
 ## Environment
 
@@ -96,6 +96,7 @@ Raw and generated data are not committed to Git.
 - `configs/experiments/prm_router_formal.json` pins dataset and model revisions.
 - `configs/experiments/prm_router_formal_split_manifest.json` records formal split hashes and statistics.
 - `outputs/README.md` defines the local and shared artifact policy.
+- `cl-prm-team/cl-prm-artifacts` is the private shared Hugging Face repository for generated inference outputs and analysis artifacts.
 
 Model checkpoints should be downloaded from their pinned upstream revisions and must not be committed.
 
