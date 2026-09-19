@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "status": "completed",
+  "started_at": "2026-09-18T23:35:37.862200+00:00",
+  "output_path": "output/ovm-smoke/seed_43.jsonl",
+  "signature": {
+    "config_hash": "b2480be06b537974c3a43403698f08289d69d74d7137e396867dca660416a1ae",
+    "pilot_hash": "6386282b3088c915591d2e4115c67246aa2f9174c3036167efb4d3ab05a76988",
+    "seed": 43,
+    "selected_examples": 100,
+    "model_snapshot": "ovm-models"
+  },
+  "completed_at": "2026-09-19T00:30:44.437454+00:00",
+  "output_hashed": "b3faad1dde85e31259a36e46723237eca70e7c661d9d7b46842b47d58167a4de",
+  "summary": {
+    "examples": 100,
+    "greedy_acc": 0.57,
+    "self_consistency_acc": 0.63,
+    "orm_acc": 0.78,
+    "ovm_acc": 0.82
+  }
+}
