@@ -65,7 +65,7 @@
       0.4,
       0.5,
       0.75,
-      1.0
+      1
     ],
     "targets": [
       "base_failure",
@@ -82,7 +82,36 @@
       "question_characters",
       "prefix_characters",
       "current_step_characters"
-    ]
+    ],
+    "cost_aware": {
+      "enabled": true,
+      "cost_target": "pathfinder_runtime_seconds",
+      "predictor_model": "ridge_regression",
+      "predictor_features": [
+        "disprm_input_tokens",
+        "current_step",
+        "total_steps",
+        "step_position",
+        "question_characters",
+        "prefix_characters",
+        "current_step_characters"
+      ],
+      "normalization": "divide_by_train_median_pathfinder_runtime",
+      "lambda_h_candidates": [
+        1,
+        1.5,
+        2
+      ],
+      "mu_candidates": [
+        0,
+        0.05,
+        0.1,
+        0.2,
+        0.5
+      ],
+      "selection_split": "validation",
+      "selection_rule": "maximize_validation_accuracy_subject_to_compute_budget"
+    }
   },
   "arbitration": {
     "overall_features": [
@@ -100,6 +129,25 @@
     "bootstrap_unit": "original_question",
     "bootstrap_samples": 2000,
     "confidence_level": 0.95,
-    "same_hardware_runtime_required": true
+    "same_hardware_runtime_required": true,
+    "secondary_metrics": [
+      "accuracy_vs_call_budget",
+      "accuracy_vs_measured_runtime",
+      "beneficial_replacement_rate",
+      "harmful_replacement_rate",
+      "captured_oracle_headroom"
+    ],
+    "diagnostic_analyses": {
+      "confidence_bins": 5,
+      "step_position_bins": 4,
+      "input_length_bins": 4,
+      "error_type_field": "classification",
+      "error_type_analysis_only": true
+    },
+    "test_lock": {
+      "require_protocol_frozen": true,
+      "primary_comparison_locked_before_test": true,
+      "no_test_based_hyperparameter_selection": true
+    }
   }
 }
