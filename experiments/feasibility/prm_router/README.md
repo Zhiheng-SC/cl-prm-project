@@ -185,7 +185,7 @@ Then install the remaining dependencies and the local package:
 
 ```bash
 pip install -r requirements.txt
-python -m pip install -e . --no-deps
+python -m pip install -e . --no-deps --no-build-isolation
 ```
 
 Shared record parsing, routing/cost helpers, grouped bootstrap utilities, and
