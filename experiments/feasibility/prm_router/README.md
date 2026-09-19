@@ -102,11 +102,6 @@ experiments/feasibility/prm_router/
 ├── run_disprm.py
 ├── run_genprm.py
 ├── run_pathfinder.py
-├── inference_io.py
-├── run_formal_inference.py
-├── select_reasoneval_threshold.py
-├── evaluate_formal_development.py
-├── evaluate_formal_test.py
 ├── analyze_complementarity.py
 ├── evaluate_routing.py
 ├── train_benefit_router.py
@@ -122,11 +117,6 @@ experiments/feasibility/prm_router/
 | `run_disprm.py`                    | Run ReasonEval and save its scores and predictions                                     |
 | `run_genprm.py`                    | Run the Windows-compatible GenPRM feasibility inference                                |
 | `run_pathfinder.py`                | Run the official two-pass PathFinder scoring procedure                                 |
-| `inference_io.py`                  | Validate resume state and record reproducibility metadata                              |
-| `run_formal_inference.py`          | Validate formal splits and plan or execute guarded verifier inference                  |
-| `select_reasoneval_threshold.py`    | Select the ReasonEval threshold using validation balanced accuracy only                 |
-| `evaluate_formal_development.py`    | Fit train-only routers/cost model and select validation-only utility weights             |
-| `evaluate_formal_test.py`           | Evaluate the frozen protocol once on the held-out test split                            |
 | `analyze_complementarity.py`       | Identify beneficial, harmful, and shared verifier outcomes                             |
 | `evaluate_routing.py`              | Evaluate random, low-score, uncertainty, and oracle routing                            |
 | `train_benefit_router.py`          | Train and evaluate a logistic-regression benefit router with out-of-fold predictions   |
@@ -191,11 +181,16 @@ Install the PyTorch build appropriate for the local CUDA version first. For the 
 pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 ```
 
-Then install the remaining dependencies:
+Then install the remaining dependencies and the local package:
 
 ```bash
 pip install -r requirements.txt
+python -m pip install -e . --no-deps
 ```
+
+Shared record parsing, routing/cost helpers, grouped bootstrap utilities, and
+inference metadata/resume logic live under `src/cl_prm/`. The guarded formal
+workflow is documented in `experiments/formal/prm_router/`.
 
 ## Reproduction
 
@@ -583,7 +578,7 @@ The formal evaluation setup now completed after this feasibility study includes:
 The runner defaults to a plan-only development pass over train and validation:
 
 ```bash
-python experiments/feasibility/prm_router/run_formal_inference.py
+python experiments/formal/prm_router/run_formal_inference.py
 ```
 
 Add `--execute` only on the selected common GPU when the team is ready to
