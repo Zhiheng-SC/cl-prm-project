@@ -586,15 +586,16 @@ start formal development inference. Test execution is separately locked and
 requires both a validation-selected ReasonEval threshold and
 `--confirm-test-protocol-frozen`.
 
-If the team selects PRM Router, the remaining formal work is:
+PRM Router has now been selected. The remaining formal workflow is maintained in
+`experiments/formal/prm_router/README.md`. In brief:
 
-1. run ReasonEval and PathFinder on train and validation using the same GPU;
-2. select thresholds, features, utility weights, and budgets without test access;
-3. freeze the routing and arbitration protocol;
-4. unlock and evaluate once on the held-out test set;
-5. report accuracy-budget and accuracy-latency curves with group-bootstrap confidence intervals and paired significance tests;
-6. retain GenPRM as an alternative second-stage baseline if time and compute permit;
-7. evaluate a more natural benchmark distribution or ProcessBench only as a secondary extension.
+1. run ReasonEval and PathFinder on the 600-train + 200-validation development splits using the same GPU;
+2. select the ReasonEval threshold and pre-specified utility weights using validation only;
+3. freeze the routing protocol and final analysis plan;
+4. unlock and evaluate once on the 400-example held-out test split;
+5. report the pre-specified accuracy-budget, runtime, bootstrap, and diagnostic analyses.
+
+GenPRM and ProcessBench remain optional extensions after the primary ReasonEval-PathFinder study.
 
 
 ## Relevant Resources
@@ -614,4 +615,4 @@ If the team selects PRM Router, the remaining formal work is:
 
 The current experiment demonstrates verifier complementarity, measurable routing benefit, and a substantial gap between heuristic and learned routing. The direction is technically feasible and empirically promising.
 
-The reported values remain exploratory. If the team selects this direction, the next decisive step is a frozen held-out evaluation.
+The reported values remain exploratory. The direction has been selected; the next decisive evidence comes from the frozen formal train/validation/test workflow documented under `experiments/formal/prm_router/`.
