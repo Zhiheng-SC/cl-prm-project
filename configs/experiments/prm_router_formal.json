@@ -110,8 +110,10 @@
         0.5
       ],
       "selection_split": "validation",
-      "selection_rule": "maximize_validation_accuracy_subject_to_compute_budget"
-    }
+      "selection_rule": "maximize_validation_accuracy_at_primary_call_budget_then_minimize_measured_runtime",
+      "ridge_alpha": 1
+    },
+    "random_baseline_seed": 20260903
   },
   "arbitration": {
     "overall_features": [
