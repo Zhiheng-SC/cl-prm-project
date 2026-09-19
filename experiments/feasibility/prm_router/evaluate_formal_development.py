@@ -22,7 +22,25 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from train_benefit_router import build_features, read_records
-from train_expected_gain_router import GAIN_CLASSES, make_expected_gain_router
+
+
+GAIN_CLASSES = [-1, 0, 1]
+
+def make_expected_gain_router(seed: int) -> Pipeline:
+    """Create the fixed multinomial router used for formal evaluation."""
+    return Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            (
+                "classifier",
+                LogisticRegression(
+                    solver="lbfgs",
+                    max_iter=2000,
+                    random_state=seed,
+                ),
+            ),
+        ]
+    )
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -333,7 +351,7 @@ def main() -> None:
         dtype=np.float64,
     )
 
-    cost_predictor = make_cost_predictor(alpha=1.0)
+    cost_predictor = make_cost_predictor(alpha=float(cost_config["ridge_alpha"]))
     cost_predictor.fit(x_cost_train, train_runtime)
     predicted_val_runtime = np.maximum(cost_predictor.predict(x_cost_val), 0.0)
 
@@ -435,6 +453,7 @@ def main() -> None:
         },
         "cost_predictor": {
             "model": cost_config["predictor_model"],
+            "ridge_alpha": float(cost_config["ridge_alpha"]),
             "train_median_pathfinder_runtime_seconds": train_median_runtime,
             "validation_mae_seconds": float(
                 np.mean(np.abs(predicted_val_runtime - val_runtime))
