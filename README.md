@@ -76,7 +76,7 @@ The local ReasonEval and GenPRM feasibility experiments used Python 3.10 with an
 
 For the local Windows environment, install the PyTorch build appropriate
 for the target CUDA version before installing `requirements.txt`, then install
-the project package in editable mode with `python -m pip install -e . --no-deps`.
+the project package in editable mode with `python -m pip install -e . --no-deps --no-build-isolation`.
 
 The verified RunPod image already provides a compatible PyTorch,
 CUDA, and FlashAttention binary stack. Do not replace that stack with the
