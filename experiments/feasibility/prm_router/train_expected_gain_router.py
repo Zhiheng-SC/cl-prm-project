@@ -15,13 +15,11 @@ from statistics import mean, pstdev
 from typing import Any
 
 import numpy as np
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.model_selection import StratifiedGroupKFold
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
 from analyze_grouped_cv import index_records, load_question_groups
+from cl_prm.evaluation.routing import make_expected_gain_router
 from train_benefit_router import (
     build_features,
     make_router,
@@ -92,27 +90,6 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_BUDGETS,
     )
     return parser.parse_args()
-
-
-def make_expected_gain_router(seed: int) -> Pipeline:
-    """Create an unweighted multinomial model with probabilistic outputs.
-
-    Class weights are intentionally not balanced: expected gain uses probability
-    differences, so preserving the observed class priors is preferable here.
-    """
-    return Pipeline(
-        [
-            ("scaler", StandardScaler()),
-            (
-                "classifier",
-                LogisticRegression(
-                    solver="lbfgs",
-                    max_iter=2000,
-                    random_state=seed,
-                ),
-            ),
-        ]
-    )
 
 
 def validate_args(args: argparse.Namespace) -> None:
