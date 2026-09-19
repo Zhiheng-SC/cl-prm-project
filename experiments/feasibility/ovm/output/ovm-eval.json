@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "study": "OVM feasibility",
+  "status": "PASS",
+  "examples_per_seed": 100,
+  "seeds": [
+    41,
+    42,
+    43
+  ],
+  "aggregate": {
+    "greedy_accuracy": 0.57,
+    "self_consistency_accuracy": 0.6266666666666667,
+    "orm_accuracy": 0.7966666666666666,
+    "ovm_accuracy": 0.8033333333333333,
+    "ovm_last_expansion_correct_fraction": 0.7596666666666666,
+    "ovm_final_beam_correct_fraction": 0.7906666666666666,
+    "vanilla_correct_fraction": 0.4824999999999996,
+    "greedy_runtime_seconds": 5.3116871404399735,
+    "sampling_runtime_seconds": 15.186846145739995,
+    "orm_runtime_seconds": 0.47322960279998066,
+    "ovm_runtime_seconds": 10.471679415620004,
+    "maximum_peak_allocated_gib": 38.89817953109741,
+    "maximum_peak_reserved_gib": 43.876953125,
+    "ovm_minus_self_consistency_accuracy": 0.17666666666666664,
+    "ovm_minus_greedy_accuracy": 0.2333333333333334,
+    "ovm_minus_orm_accuracy": 0.00666666666666671,
+    "last_expansion_minus_vanilla_correct_fraction": 0.277166666666667,
+    "ovm_to_sampling_runtime_ratio": 0.6895229802902412
+  },
+  "per_seed": {
+    "41": {
+      "greedy_accuracy": 0.57,
+      "self_consistency_accuracy": 0.61,
+      "orm_accuracy": 0.83,
+      "ovm_accuracy": 0.79,
+      "ovm_last_expansion_correct_fraction": 0.7375,
+      "ovm_final_beam_correct_fraction": 0.7819999999999999,
+      "vanilla_correct_fraction": 0.48849999999999993,
+      "greedy_runtime_seconds": 5.288055329319991,
+      "sampling_runtime_seconds": 14.986478782950021,
+      "orm_runtime_seconds": 0.47161040944997695,
+      "ovm_runtime_seconds": 10.295547465810051,
+      "maximum_peak_allocated_gib": 38.89817953109741,
+      "maximum_peak_reserved_gib": 43.876953125,
+      "ovm_minus_self_consistency_accuracy": 0.18000000000000005,
+      "ovm_minus_greedy_accuracy": 0.22000000000000008,
+      "ovm_minus_orm_accuracy": -0.039999999999999925,
+      "last_expansion_minus_vanilla_correct_fraction": 0.2490000000000001,
+      "ovm_to_sampling_runtime_ratio": 0.6869890929631316
+    },
+    "42": {
+      "greedy_accuracy": 0.57,
+      "self_consistency_accuracy": 0.64,
+      "orm_accuracy": 0.78,
+      "ovm_accuracy": 0.8,
+      "ovm_last_expansion_correct_fraction": 0.763,
+      "ovm_final_beam_correct_fraction": 0.7879999999999999,
+      "vanilla_correct_fraction": 0.47800000000000004,
+      "greedy_runtime_seconds": 5.312353744989968,
+      "sampling_runtime_seconds": 15.247000893980049,
+      "orm_runtime_seconds": 0.47135314654997273,
+      "ovm_runtime_seconds": 10.636794383269999,
+      "maximum_peak_allocated_gib": 38.47680330276489,
+      "maximum_peak_reserved_gib": 42.884765625,
+      "ovm_minus_self_consistency_accuracy": 0.16000000000000003,
+      "ovm_minus_greedy_accuracy": 0.2300000000000001,
+      "ovm_minus_orm_accuracy": 0.020000000000000018,
+      "last_expansion_minus_vanilla_correct_fraction": 0.285,
+      "ovm_to_sampling_runtime_ratio": 0.6976319118253419
+    },
+    "43": {
+      "greedy_accuracy": 0.57,
+      "self_consistency_accuracy": 0.63,
+      "orm_accuracy": 0.78,
+      "ovm_accuracy": 0.82,
+      "ovm_last_expansion_correct_fraction": 0.7785000000000002,
+      "ovm_final_beam_correct_fraction": 0.8019999999999999,
+      "vanilla_correct_fraction": 0.48100000000000015,
+      "greedy_runtime_seconds": 5.3346523470099605,
+      "sampling_runtime_seconds": 15.32705876028991,
+      "orm_runtime_seconds": 0.4767252523999923,
+      "ovm_runtime_seconds": 10.482696397779964,
+      "maximum_peak_allocated_gib": 38.45447635650635,
+      "maximum_peak_reserved_gib": 43.19921875,
+      "ovm_minus_self_consistency_accuracy": 0.18999999999999995,
+      "ovm_minus_greedy_accuracy": 0.25,
+      "ovm_minus_orm_accuracy": 0.039999999999999925,
+      "last_expansion_minus_vanilla_correct_fraction": 0.29750000000000004,
+      "ovm_to_sampling_runtime_ratio": 0.6839339864044264
+    }
+  },
+  "feasibility": [
+    {
+      "name": "minimum_completed_seeds",
+      "value": 3,
+      "threshold": 3,
+      "passed": true
+    },
+    {
+      "name": "ovm_minus_self_consistency_accuracy",
+      "value": 0.17666666666666664,
+      "threshold": 0.05,
+      "passed": true
+    },
+    {
+      "name": "no_seed_worse_than_self_consistency",
+      "value": 0.16000000000000003,
+      "threshold": 0.0,
+      "passed": true
+    },
+    {
+      "name": "ovm_minus_greedy_accuracy",
+      "value": 0.2333333333333334,
+      "threshold": 0.15,
+      "passed": true
+    },
+    {
+      "name": "last_expansion_minus_vanilla_correct_fraction",
+      "value": 0.277166666666667,
+      "threshold": 0.15,
+      "passed": true
+    },
+    {
+      "name": "ovm_minus_orm_accuracy",
+      "value": 0.00666666666666671,
+      "threshold": -0.02,
+      "passed": true
+    },
+    {
+      "name": "ovm_to_sampling_runtime_ratio",
+      "value": 0.6895229802902412,
+      "threshold": 3.0,
+      "passed": true
+    },
+    {
+      "name": "maximum_peak_allocated_gib",
+      "value": 38.89817953109741,
+      "threshold": 78.0,
+      "passed": true
+    }
+  ]
+}
