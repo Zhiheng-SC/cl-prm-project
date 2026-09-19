@@ -2,7 +2,7 @@
 
 ## Status
 
-**Feasibility decision: passed. Final team selection is pending.**
+**Feasibility decision: passed. PRM Router is the selected primary project direction.**
 
 The original 100-example study has been confirmed by a 200-example expanded
 study using five original-question-grouped OOF seeds. At the primary 20%
@@ -19,7 +19,7 @@ This preliminary study confirms that:
 5. Post-call trust arbitration can detect many harmful replacements.
 6. Random and uncertainty routing leave substantial room for improvement.
 
-These results support project selection but are exploratory and must not be interpreted as final held-out benchmark results.
+These results support the selected direction but are exploratory and must not be interpreted as final held-out benchmark results. No additional feasibility-scale GPU inference is required before the formal train/validation runs.
 
 ## Research Question
 
@@ -104,6 +104,9 @@ experiments/feasibility/prm_router/
 ├── run_pathfinder.py
 ├── inference_io.py
 ├── run_formal_inference.py
+├── select_reasoneval_threshold.py
+├── evaluate_formal_development.py
+├── evaluate_formal_test.py
 ├── analyze_complementarity.py
 ├── evaluate_routing.py
 ├── train_benefit_router.py
@@ -121,6 +124,9 @@ experiments/feasibility/prm_router/
 | `run_pathfinder.py`                | Run the official two-pass PathFinder scoring procedure                                 |
 | `inference_io.py`                  | Validate resume state and record reproducibility metadata                              |
 | `run_formal_inference.py`          | Validate formal splits and plan or execute guarded verifier inference                  |
+| `select_reasoneval_threshold.py`    | Select the ReasonEval threshold using validation balanced accuracy only                 |
+| `evaluate_formal_development.py`    | Fit train-only routers/cost model and select validation-only utility weights             |
+| `evaluate_formal_test.py`           | Evaluate the frozen protocol once on the held-out test split                            |
 | `analyze_complementarity.py`       | Identify beneficial, harmful, and shared verifier outcomes                             |
 | `evaluate_routing.py`              | Evaluate random, low-score, uncertainty, and oracle routing                            |
 | `train_benefit_router.py`          | Train and evaluate a logistic-regression benefit router with out-of-fold predictions   |
