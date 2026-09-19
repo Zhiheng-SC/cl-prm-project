@@ -1,0 +1,18 @@
+# Shared pure-Python / platform-independent dependencies.
+# CUDA-coupled packages such as PyTorch and FlashAttention are handled
+# separately for local and RunPod environments.
+
+# Packaging
+setuptools>=68
+
+# Numerical computing
+numpy==1.26.4
+scipy==1.15.3
+
+# Machine learning
+scikit-learn==1.5.2
+
+# Hugging Face inference and datasets
+transformers==4.48.2
+datasets==4.8.5
+accelerate==1.2.0
