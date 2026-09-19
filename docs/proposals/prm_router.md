@@ -111,12 +111,18 @@ PathFinder features are used only after the call and therefore do not leak into 
 * Two-pass gated scoring
 * BF16 with Flash Attention 2
 
-### Alternative second-stage baseline
+### Alternative second-stage baseline / optional extension
 
-* `GenPRM/GenPRM-1.5B`
-* Generative analysis followed by a Yes/No judgement
-* One sampled verification path in the current feasibility implementation
-* Retained as a comparison rather than the primary cascade
+* `GenPRM/GenPRM-1.5B` was used in the completed feasibility study.
+* The current feasibility implementation uses a simplified single-path
+  verification wrapper and does not reproduce the full official GenPRM
+  inference procedure.
+* `GenPRM/GenPRM-7B` is the preferred candidate for an optional formal
+  ReasonEval-to-GenPRM verifier-pair extension if time and compute permit.
+* Any GenPRM-7B extension should first be validated with the official GenPRM
+  inference implementation, or with a clearly documented approximation if
+  full reproduction is not practical.
+* GenPRM remains an optional comparison rather than the primary cascade.
 
 ## Dataset
 
