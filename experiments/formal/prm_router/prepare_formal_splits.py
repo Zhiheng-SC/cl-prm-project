@@ -348,6 +348,7 @@ def audit_splits(
 def main() -> None:
     args = parse_args()
     config = read_json(args.config)
+    validate_formal_config(config)
     dataset_config = config["dataset"]
     split_config = config["formal_splits"]
 
