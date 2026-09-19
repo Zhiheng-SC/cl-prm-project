@@ -27,6 +27,7 @@ from cl_prm.data.prmbench import (
     get_steps,
     make_record,
 )
+from cl_prm.utils.formal_config import validate_formal_config
 
 
 DEFAULT_CONFIG = Path("configs/experiments/prm_router_formal.json")
