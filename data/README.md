@@ -15,7 +15,7 @@ python experiments/feasibility/prm_router/prepare_subset.py --n-correct 50 --n-e
 The formal configuration pins the PRMBench revision and excludes all original-question groups represented in the feasibility pilot.
 
 ```bash
-python experiments/feasibility/prm_router/prepare_formal_splits.py --config configs/experiments/prm_router_formal.json --output-dir data/prm_router/formal
+python experiments/formal/prm_router/prepare_formal_splits.py --config configs/experiments/prm_router_formal.json --output-dir data/prm_router/formal
 ```
 
 This produces:
