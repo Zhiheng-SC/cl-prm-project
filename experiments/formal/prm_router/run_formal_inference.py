@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from cl_prm.utils.formal_config import validate_formal_config
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG = (
