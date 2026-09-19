@@ -244,6 +244,7 @@ def build_command(
 def main() -> None:
     args = parse_args()
     config = read_json(args.config)
+    validate_formal_config(config)
     manifest = read_json(args.manifest)
 
     verifiers = list(dict.fromkeys(args.verifiers))
