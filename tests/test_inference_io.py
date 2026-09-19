@@ -8,15 +8,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-MODULE_DIR = (
-    Path(__file__).resolve().parents[1]
-    / "experiments"
-    / "feasibility"
-    / "prm_router"
-)
-sys.path.insert(0, str(MODULE_DIR))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_DIR = REPO_ROOT / "src"
+sys.path.insert(0, str(SRC_DIR))
 
-from inference_io import (  # noqa: E402
+from cl_prm.utils.inference_io import (  # noqa: E402
     finalize_run_metadata,
     initialize_run_metadata,
     prepare_resume,
