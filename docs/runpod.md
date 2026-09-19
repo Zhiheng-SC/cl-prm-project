@@ -51,7 +51,10 @@ HF_HUB_ENABLE_HF_TRANSFER=0
 PYTHONUNBUFFERED=1
 ```
 
-Use read-only or minimum-scope tokens where possible.
+Use minimum-scope tokens. A read token is sufficient for downloading public or
+authorized model/data resources. If artifacts will be uploaded directly from
+the Pod, use a fine-grained Hugging Face token with write access limited to
+`cl-prm-team/cl-prm-artifacts`; do not reuse a broad personal token.
 
 ## First startup
 
