@@ -19,12 +19,12 @@ The project studies two related decisions:
 1. **Pre-call routing:** is the expected correction benefit worth the additional verification cost?
 2. **Post-call arbitration:** after observing the second verifier, is replacing the base judgement sufficiently reliable?
 
-The formal study addresses four primary research questions:
+The formal study has three primary research questions plus one pre-specified secondary question:
 
 1. **RQ1 — Complementarity:** Do ReasonEval and PathFinder exhibit enough complementary errors to create exploitable routing headroom?
 2. **RQ2 — Pair-specific utility:** Does pair-specific expected correction utility outperform uncertainty and base-verifier failure prediction on held-out data?
 3. **RQ3 — Compute-aware routing:** Does incorporating predicted additional inference cost improve the accuracy-compute trade-off relative to call-budget-only routing?
-4. **RQ4 — Risk-controlled arbitration:** Can post-call evidence reduce harmful replacements without sacrificing too many beneficial corrections?
+4. **Secondary RQ4 — Risk-controlled arbitration:** Can post-call evidence reduce harmful replacements without sacrificing too many beneficial corrections?
 
 Cross-dataset transfer to ProcessBench and a formal ReasonEval-to-GenPRM comparison are optional extensions after the primary PRMBench study is complete.
 
@@ -65,9 +65,9 @@ The formal extension will additionally study a cost- and risk-aware utility:
 
 `utility = P(beneficial) - lambda_h * P(harmful) - mu * predicted additional cost`
 
-The additional cost term must be available before PathFinder is called. A lightweight cost predictor will therefore be trained on the formal training split to predict PathFinder runtime from pre-call features such as token/character length and step position. Measured PathFinder runtime is used as the prediction target and for final compute accounting, but never as an input to the routing decision for the same example. Predicted cost is normalized by the median measured PathFinder runtime on the training split. The utility weights, cost-predictor hyperparameters, and routing threshold must be selected using training and validation data only.
+The additional cost term must be available before PathFinder is called. A lightweight cost predictor will therefore be trained on the formal training split to predict PathFinder runtime from pre-call features such as token/character length and step position. Measured PathFinder runtime is used as the prediction target and for final compute accounting, but never as an input to the routing decision for the same example. Predicted cost is normalized by the median measured PathFinder runtime on the training split. The Ridge cost predictor uses a pre-specified regularization value (`alpha = 1.0`). The utility weights are selected on validation only; realized same-example PathFinder runtime is never used as a routing input.
 
-Under a fixed compute budget, the router ranks examples by predicted utility. It may abstain and retain ReasonEval when the predicted utility does not exceed a validation-calibrated threshold.
+Under each fixed call budget, the router ranks examples by predicted utility and calls PathFinder for the top-ranked fraction. The primary confirmatory budget is fixed at 20%; the other pre-specified budgets are secondary curve points.
 
 ### Stage 3: PathFinder verification
 
@@ -80,7 +80,7 @@ PathFinder performs a hierarchical two-pass evaluation:
 
 The official Flash Attention 2 inference path is used for formal model output.
 
-### Stage 4: Risk-controlled post-call arbitration
+### Stage 4: Risk-controlled post-call arbitration (secondary)
 
 After PathFinder has been called, a second lightweight model decides whether its prediction should replace ReasonEval.
 
@@ -261,15 +261,15 @@ Use the training split to fit:
 * benefit-only routing;
 * harm-aware expected-gain routing;
 * a lightweight PathFinder runtime predictor using pre-call features only;
-* post-call arbitration.
+* post-call arbitration for the secondary analysis.
 
 Use the validation split only to select:
 
 * the ReasonEval decision threshold;
-* regularization and model hyperparameters;
 * utility weights `lambda_h` and `mu`;
-* cost-predictor hyperparameters;
-* routing and override thresholds.
+* any post-call arbitration threshold used in the secondary analysis.
+
+Router and cost-predictor model hyperparameters are pre-specified before formal inference; the Ridge cost predictor uses `alpha = 1.0`.
 
 After these choices are frozen, evaluate once on the held-out test split.
 

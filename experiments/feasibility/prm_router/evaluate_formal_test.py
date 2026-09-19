@@ -18,11 +18,11 @@ from evaluate_formal_development import (
     cost_features,
     gain_probabilities,
     make_cost_predictor,
+    make_expected_gain_router,
     router_features,
     safe_fraction,
     top_budget_indices,
 )
-from train_expected_gain_router import make_expected_gain_router
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -70,7 +70,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def make_failure_predictor(seed: int) -> Pipeline:
+def make_binary_predictor(seed: int) -> Pipeline:
     return Pipeline(
         [
             ("scaler", StandardScaler()),
@@ -195,17 +195,31 @@ def main() -> None:
 
     # Difficulty-only baseline: predict whether ReasonEval is wrong.
     train_failure = (~train["base_correct"]).astype(np.int64)
-    failure_model = make_failure_predictor(seed)
+    if len(np.unique(train_failure)) < 2:
+        raise ValueError("Training split must contain both ReasonEval success and failure.")
+    failure_model = make_binary_predictor(seed)
     failure_model.fit(x_train, train_failure)
     failure_score = failure_model.predict_proba(x_test)[:, 1]
 
-    # Confidence/uncertainty baseline: closest ReasonEval score to threshold.
+    # Benefit-only baseline: model whether PathFinder can correct ReasonEval,
+    # without explicitly penalizing harmful replacements.
+    train_benefit = (train["gain_labels"] == 1).astype(np.int64)
+    if len(np.unique(train_benefit)) < 2:
+        raise ValueError("Training split must contain beneficial and non-beneficial calls.")
+    benefit_model = make_binary_predictor(seed + 1)
+    benefit_model.fit(x_train, train_benefit)
+    benefit_score = benefit_model.predict_proba(x_test)[:, 1]
+
+    # Heuristic baselines available before the PathFinder call.
     uncertainty_score = -np.abs(test["scores"] - threshold)
+    low_score = -test["scores"]
+    random_seed = int(config["routing"].get("random_baseline_seed", seed))
+    random_score = np.random.default_rng(random_seed).random(len(test_base))
 
     # Cost-aware secondary method. Runtime is predicted from pre-call features;
     # realized test runtime is never used in the routing score.
     cost_config = config["routing"]["cost_aware"]
-    cost_predictor = make_cost_predictor(alpha=1.0)
+    cost_predictor = make_cost_predictor(alpha=float(cost_config["ridge_alpha"]))
     train_cost_x = cost_features(train_base)
     test_cost_x = cost_features(test_base)
     train_pf_runtime = np.asarray(
@@ -221,11 +235,18 @@ def main() -> None:
     normalized_cost = predicted_test_runtime / train_median_runtime
     cost_utility = p_benefit - lambda_h * p_harm - mu * normalized_cost
 
+    routing_scores = {
+        "random": random_score,
+        "low_score": low_score,
+        "uncertainty": uncertainty_score,
+        "failure_prediction": failure_score,
+        "benefit_only": benefit_score,
+        "expected_gain": expected_gain,
+        "cost_aware": cost_utility,
+    }
     selected_indices = {
-        "uncertainty": top_budget_indices(uncertainty_score, primary_budget),
-        "failure_prediction": top_budget_indices(failure_score, primary_budget),
-        "expected_gain": top_budget_indices(expected_gain, primary_budget),
-        "cost_aware": top_budget_indices(cost_utility, primary_budget),
+        name: top_budget_indices(score, primary_budget)
+        for name, score in routing_scores.items()
     }
 
     predictions = {
@@ -304,6 +325,38 @@ def main() -> None:
             )
         )
 
+    secondary_budgets = [
+        float(value) for value in config["routing"].get("secondary_call_budgets", [])
+    ]
+    all_budgets = sorted(set([primary_budget, *secondary_budgets]))
+    routing_curves: dict[str, list[dict[str, float | int]]] = {}
+    for name, score in routing_scores.items():
+        rows = []
+        for budget in all_budgets:
+            selected = top_budget_indices(score, budget)
+            pred = final_predictions(
+                test["base_predictions"],
+                test["second_predictions"],
+                selected,
+            )
+            rows.append(
+                {
+                    "call_budget": float(budget),
+                    "called_examples": int(len(selected)),
+                    "accuracy": float(np.mean(pred == labels)),
+                    "cascade_total_seconds": selected_runtime(
+                        base_runtime, pf_runtime, selected
+                    ),
+                    "beneficial_selected": int(
+                        np.sum(test["gain_labels"][selected] == 1)
+                    ),
+                    "harmful_selected": int(
+                        np.sum(test["gain_labels"][selected] == -1)
+                    ),
+                }
+            )
+        routing_curves[name] = rows
+
     oracle_accuracy = float(
         np.mean(test["base_correct"] | test["second_correct"])
     )
@@ -322,6 +375,8 @@ def main() -> None:
         "protocol": {
             "reason_eval_threshold": threshold,
             "primary_call_budget": primary_budget,
+            "secondary_call_budgets": secondary_budgets,
+            "random_baseline_seed": random_seed,
             "lambda_h": lambda_h,
             "mu": mu,
             "router_fit_split": "train",
@@ -341,11 +396,13 @@ def main() -> None:
         "accuracy": accuracy,
         "paired_differences": paired_differences,
         "runtime": runtime,
+        "routing_curves": routing_curves,
         "oracle": {
             "pairwise_accuracy": oracle_accuracy,
             "captured_headroom_expected_gain": captured_headroom,
         },
         "cost_aware": {
+            "ridge_alpha": float(cost_config["ridge_alpha"]),
             "mean_predicted_pathfinder_runtime_seconds": float(
                 np.mean(predicted_test_runtime)
             ),
@@ -363,11 +420,14 @@ def main() -> None:
     print(f"Test examples:              {len(test_base)}")
     print(f"ReasonEval:                 {accuracy['reasoneval_only']['estimate']:.4f}")
     print(f"PathFinder:                 {accuracy['pathfinder_only']['estimate']:.4f}")
+    print(f"Random @ 20%:               {accuracy['random']['estimate']:.4f}")
+    print(f"Low score @ 20%:            {accuracy['low_score']['estimate']:.4f}")
     print(f"Uncertainty @ 20%:          {accuracy['uncertainty']['estimate']:.4f}")
     print(
         f"Failure prediction @ 20%:   "
         f"{accuracy['failure_prediction']['estimate']:.4f}"
     )
+    print(f"Benefit only @ 20%:         {accuracy['benefit_only']['estimate']:.4f}")
     print(f"Expected gain @ 20%:        {accuracy['expected_gain']['estimate']:.4f}")
     print(f"Cost-aware @ 20%:           {accuracy['cost_aware']['estimate']:.4f}")
     print(f"Oracle:                     {oracle_accuracy:.4f}")
