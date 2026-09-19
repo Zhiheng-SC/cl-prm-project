@@ -26,7 +26,7 @@ resume/metadata logic is provided by `cl_prm.utils.inference_io`.
 ## Development sequence
 
 From the repository root, after installing the package with
-`python -m pip install -e . --no-deps`:
+`python -m pip install -e . --no-deps --no-build-isolation`:
 
 ```bash
 python experiments/formal/prm_router/prepare_formal_splits.py \
