@@ -166,6 +166,20 @@ outputs/prm_router/formal/development_selection.json
 The development stage fits the train-only routing and runtime models and uses
 validation only to select the pre-specified `lambda_h` and `mu` values.
 
+Archive the two development-selection artifacts after checking them:
+
+```bash
+hf upload cl-prm-team/cl-prm-artifacts \
+  outputs/prm_router/formal/validation/reasoneval_threshold.json \
+  evaluation/router/reasoneval_threshold.json \
+  --repo-type dataset
+
+hf upload cl-prm-team/cl-prm-artifacts \
+  outputs/prm_router/formal/development_selection.json \
+  evaluation/router/development_selection.json \
+  --repo-type dataset
+```
+
 ## 6. Freeze the Protocol
 
 Before touching the held-out test split, record and freeze:
