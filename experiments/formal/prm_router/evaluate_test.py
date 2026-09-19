@@ -85,6 +85,7 @@ def main() -> None:
         )
 
     config = json.loads(args.config.read_text(encoding="utf-8"))
+    validate_formal_config(config)
     threshold_payload = json.loads(
         args.threshold_selection.read_text(encoding="utf-8")
     )
