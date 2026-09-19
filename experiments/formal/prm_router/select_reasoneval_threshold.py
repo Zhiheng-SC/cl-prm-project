@@ -11,6 +11,7 @@ from sklearn.metrics import balanced_accuracy_score
 
 from cl_prm.data.records import read_records
 from cl_prm.evaluation.thresholds import candidate_thresholds
+from cl_prm.utils.formal_config import validate_formal_config
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
