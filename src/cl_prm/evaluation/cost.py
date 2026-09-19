@@ -10,6 +10,17 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 
+COST_FEATURE_NAMES = [
+    "disprm_input_tokens",
+    "current_step",
+    "total_steps",
+    "step_position",
+    "question_characters",
+    "prefix_characters",
+    "current_step_characters",
+]
+
+
 def cost_features(records: list[dict[str, Any]]) -> np.ndarray:
     features = []
     for row in records:
