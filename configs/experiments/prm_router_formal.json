@@ -74,11 +74,11 @@
     ],
     "pre_call_features": [
       "disprm_score",
-      "disprm_predicted_correct",
       "distance_to_threshold",
+      "disprm_predicted_correct",
+      "step_position",
       "current_step",
       "total_steps",
-      "step_position",
       "question_characters",
       "prefix_characters",
       "current_step_characters"
