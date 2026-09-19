@@ -477,21 +477,18 @@ Mitigation:
 * describe GenPRM as an alternative baseline;
 * avoid making conclusions about the full official GenPRM system unless it is reproduced.
 
-## Current Blockers
+## Current Pre-Run Checklist
 
-There are no remaining technical blockers for the feasibility implementation. The ReasonEval, GenPRM, and PathFinder pipelines have all been executed successfully.
+There are no remaining technical blockers for the primary formal implementation. The formal configuration, grouped split manifest, guarded inference runner, train/validation selector, held-out evaluator, resumable metadata path, and private shared artifact repository are in place.
 
-The formal configuration and leakage-controlled split manifests are complete. Dataset and model revisions are pinned, the 100-example pilot groups are excluded, and the tracked split hashes have been verified.
+Before formal development inference begins, the remaining coordination and preflight items are:
 
-Before formal verifier inference begins, the following items remain:
+1. confirm the common GPU/environment for all primary ReasonEval and PathFinder runtime measurements;
+2. assign team responsibilities for inference, router evaluation/statistics, interpretation, and report integration;
+3. reconstruct the formal splits and run the guarded plan-only preflight on the selected cloud environment;
+4. verify that generated artifacts will be archived under `cl-prm-team/cl-prm-artifacts` after completion and hash checks.
 
-1. utility-weight search spaces, cost-prediction rules, validation selection rules, and the final comparison baselines must be frozen in the experiment configuration;
-2. the inference wrappers must support pinned revisions, safe resume, and complete run metadata;
-3. access to a shared 40-80 GB GPU and persistent artifact storage must be confirmed;
-4. all primary verifier outputs and runtime measurements must be collected on the same hardware;
-5. team responsibilities for inference, router evaluation, analysis, and report writing should be assigned before report integration.
-
-The next coding task is formal inference engineering, followed by train-and-validation inference. The 100-example pilot should not be modified further.
+The 100- and 200-example feasibility studies are frozen and should not be modified further. The next experimental milestone is the complete 600-train + 200-validation ReasonEval/PathFinder run.
 
 ## Decision
 
@@ -511,7 +508,7 @@ GenPRM will remain an alternative verifier baseline rather than the central syst
 
 The pilot results establish technical feasibility but do not establish held-out generalization, statistical significance, or a final accuracy-compute advantage. These claims depend on the formal grouped train, validation, and test evaluation.
 
-The next milestone is to freeze the updated evaluation protocol, validate the new cost-aware and diagnostic analysis code on existing development outputs, and then run complete formal train-and-validation inference. The held-out test remains locked until all validation-selected choices are frozen.
+The next milestone is complete formal train-and-validation inference on the common hardware, followed by validation-only threshold and utility selection. The held-out test remains locked until all validation-selected choices and the final analysis plan are frozen.
 
 ## Relevant Resources
 
