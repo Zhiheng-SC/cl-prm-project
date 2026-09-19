@@ -9,7 +9,8 @@ from pathlib import Path
 import numpy as np
 from sklearn.metrics import balanced_accuracy_score
 
-from train_benefit_router import read_records
+from cl_prm.data.records import read_records
+from cl_prm.evaluation.thresholds import candidate_thresholds
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -30,23 +31,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--validation-reasoneval", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     return parser.parse_args()
-
-
-def candidate_thresholds(scores: np.ndarray) -> np.ndarray:
-    unique = np.unique(scores)
-    if len(unique) == 1:
-        return np.asarray([0.0, float(unique[0]), 1.0], dtype=np.float64)
-
-    midpoints = (unique[:-1] + unique[1:]) / 2.0
-    values = np.concatenate(
-        [
-            np.asarray([0.0], dtype=np.float64),
-            unique,
-            midpoints,
-            np.asarray([1.0], dtype=np.float64),
-        ]
-    )
-    return np.unique(np.clip(values, 0.0, 1.0))
 
 
 def main() -> None:

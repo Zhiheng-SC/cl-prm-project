@@ -5,19 +5,23 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
 
 import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
-from evaluate_formal_development import (
-    align,
+from cl_prm.data.records import (
+    align_verifier_records as align,
     correctness_arrays,
+)
+from cl_prm.evaluation.bootstrap import bootstrap_group_metric
+from cl_prm.evaluation.cost import (
     cost_features,
-    gain_probabilities,
     make_cost_predictor,
+    selected_runtime,
+)
+from cl_prm.evaluation.routing import (
+    final_predictions,
+    gain_probabilities,
+    make_binary_predictor,
     make_expected_gain_router,
     router_features,
     safe_fraction,
@@ -68,69 +72,6 @@ def parse_args() -> argparse.Namespace:
         help="Required acknowledgement that validation choices are frozen.",
     )
     return parser.parse_args()
-
-
-def make_binary_predictor(seed: int) -> Pipeline:
-    return Pipeline(
-        [
-            ("scaler", StandardScaler()),
-            (
-                "classifier",
-                LogisticRegression(
-                    class_weight="balanced",
-                    solver="liblinear",
-                    max_iter=2000,
-                    random_state=seed,
-                ),
-            ),
-        ]
-    )
-
-
-def final_predictions(
-    base_predictions: np.ndarray,
-    second_predictions: np.ndarray,
-    selected: np.ndarray,
-) -> np.ndarray:
-    result = base_predictions.copy()
-    result[selected] = second_predictions[selected]
-    return result
-
-
-def selected_runtime(
-    base_runtime: np.ndarray,
-    second_runtime: np.ndarray,
-    selected: np.ndarray,
-) -> float:
-    return float(np.sum(base_runtime) + np.sum(second_runtime[selected]))
-
-
-def bootstrap_group_metric(
-    values: np.ndarray,
-    group_ids: np.ndarray,
-    samples: int,
-    confidence_level: float,
-    seed: int,
-) -> dict[str, float]:
-    groups = sorted(set(group_ids.tolist()))
-    indices_by_group = {
-        group: np.flatnonzero(group_ids == group)
-        for group in groups
-    }
-    rng = np.random.default_rng(seed)
-    estimates = np.empty(samples, dtype=np.float64)
-
-    for sample_id in range(samples):
-        drawn = rng.choice(groups, size=len(groups), replace=True)
-        indices = np.concatenate([indices_by_group[group] for group in drawn])
-        estimates[sample_id] = float(np.mean(values[indices]))
-
-    alpha = (1.0 - confidence_level) / 2.0
-    return {
-        "estimate": float(np.mean(values)),
-        "ci_low": float(np.quantile(estimates, alpha)),
-        "ci_high": float(np.quantile(estimates, 1.0 - alpha)),
-    }
 
 
 def main() -> None:

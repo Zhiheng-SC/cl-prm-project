@@ -1,13 +1,4 @@
-"""Select the formal PRM router on train/validation data only.
-
-This script is intentionally development-only. It fits:
-1. a three-class correction-utility router on the formal training split;
-2. a lightweight pre-call PathFinder runtime predictor;
-3. validation-selected risk/cost weights for cost-aware routing.
-
-It also reports pre-specified benefit/harm diagnostics. The held-out test split
-must not be supplied to this script.
-"""
+"""Select the formal PRM router on train/validation data only."""
 
 from __future__ import annotations
 
@@ -17,30 +8,21 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from sklearn.linear_model import LogisticRegression, Ridge
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
-from train_benefit_router import build_features, read_records
-
-
-GAIN_CLASSES = [-1, 0, 1]
-
-def make_expected_gain_router(seed: int) -> Pipeline:
-    """Create the fixed multinomial router used for formal evaluation."""
-    return Pipeline(
-        [
-            ("scaler", StandardScaler()),
-            (
-                "classifier",
-                LogisticRegression(
-                    solver="lbfgs",
-                    max_iter=2000,
-                    random_state=seed,
-                ),
-            ),
-        ]
-    )
+from cl_prm.data.records import (
+    align_verifier_records as align,
+    correctness_arrays,
+)
+from cl_prm.evaluation.cost import cost_features, make_cost_predictor
+from cl_prm.evaluation.routing import (
+    GAIN_CLASSES,
+    gain_probabilities,
+    make_expected_gain_router,
+    router_features,
+    routed_accuracy,
+    safe_fraction,
+    top_budget_indices,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -69,160 +51,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     return parser.parse_args()
-
-
-def record_key(record: dict[str, Any]) -> tuple[str, int]:
-    return str(record["example_id"]), int(record["current_step"])
-
-
-def index_records(
-    records: list[dict[str, Any]],
-    source_name: str,
-) -> dict[tuple[str, int], dict[str, Any]]:
-    indexed: dict[tuple[str, int], dict[str, Any]] = {}
-    for record in records:
-        key = record_key(record)
-        if key in indexed:
-            raise ValueError(f"Duplicate {source_name} record: {key}")
-        indexed[key] = record
-    return indexed
-
-
-def align(
-    reasoneval_path: Path,
-    pathfinder_path: Path,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    base = index_records(read_records(reasoneval_path), "ReasonEval")
-    second = index_records(read_records(pathfinder_path), "PathFinder")
-    keys = sorted(set(base) & set(second))
-    if len(keys) != len(base) or len(keys) != len(second):
-        raise ValueError("ReasonEval and PathFinder records do not match exactly.")
-    return [base[key] for key in keys], [second[key] for key in keys]
-
-
-def correctness_arrays(
-    base_records: list[dict[str, Any]],
-    second_records: list[dict[str, Any]],
-    threshold: float,
-) -> dict[str, np.ndarray]:
-    labels = np.asarray([int(row["label"]) for row in base_records], dtype=np.int64)
-    second_labels = np.asarray(
-        [int(row["label"]) for row in second_records],
-        dtype=np.int64,
-    )
-    if not np.array_equal(labels, second_labels):
-        raise ValueError("ReasonEval and PathFinder ground-truth labels differ.")
-
-    scores = np.asarray(
-        [float(row["disprm_score"]) for row in base_records],
-        dtype=np.float64,
-    )
-    base_predictions = (scores >= threshold).astype(np.int64)
-    second_predictions = np.asarray(
-        [int(row["pathfinder_prediction"]) for row in second_records],
-        dtype=np.int64,
-    )
-
-    base_correct = base_predictions == labels
-    second_correct = second_predictions == labels
-    gains = second_correct.astype(np.int64) - base_correct.astype(np.int64)
-
-    return {
-        "labels": labels,
-        "scores": scores,
-        "base_predictions": base_predictions,
-        "second_predictions": second_predictions,
-        "base_correct": base_correct,
-        "second_correct": second_correct,
-        "gain_labels": gains,
-    }
-
-
-def router_features(
-    records: list[dict[str, Any]],
-    scores: np.ndarray,
-    threshold: float,
-) -> np.ndarray:
-    return np.asarray(
-        [
-            build_features(record=row, score=float(score), threshold=threshold)
-            for row, score in zip(records, scores)
-        ],
-        dtype=np.float64,
-    )
-
-
-def cost_features(records: list[dict[str, Any]]) -> np.ndarray:
-    features = []
-    for row in records:
-        steps = row.get("steps", [])
-        question = str(row.get("question", ""))
-        current_step_text = str(
-            row.get("current_step_text", steps[-1] if steps else "")
-        )
-        prefix_text = "\n".join(str(step) for step in steps)
-        current_step = int(row["current_step"])
-        total_steps = int(row.get("total_steps", current_step))
-        step_position = float(
-            row.get("step_position", current_step / max(total_steps, 1))
-        )
-        features.append(
-            [
-                float(row.get("disprm_input_tokens", 0)),
-                float(current_step),
-                float(total_steps),
-                step_position,
-                float(len(question)),
-                float(len(prefix_text)),
-                float(len(current_step_text)),
-            ]
-        )
-    return np.asarray(features, dtype=np.float64)
-
-
-def make_cost_predictor(alpha: float = 1.0) -> Pipeline:
-    return Pipeline(
-        [
-            ("scaler", StandardScaler()),
-            ("ridge", Ridge(alpha=alpha)),
-        ]
-    )
-
-
-def gain_probabilities(
-    model: Pipeline,
-    features: np.ndarray,
-) -> np.ndarray:
-    raw = model.predict_proba(features)
-    classes = model.named_steps["classifier"].classes_
-    output = np.zeros((len(features), 3), dtype=np.float64)
-    class_to_column = {label: index for index, label in enumerate(GAIN_CLASSES)}
-    for source_column, label in enumerate(classes):
-        output[:, class_to_column[int(label)]] = raw[:, source_column]
-    return output
-
-
-def routed_accuracy(
-    labels: np.ndarray,
-    base_predictions: np.ndarray,
-    second_predictions: np.ndarray,
-    selected: np.ndarray,
-) -> float:
-    final_predictions = base_predictions.copy()
-    final_predictions[selected] = second_predictions[selected]
-    return float(np.mean(final_predictions == labels))
-
-
-def top_budget_indices(scores: np.ndarray, fraction: float) -> np.ndarray:
-    count = int(round(len(scores) * fraction))
-    order = np.argsort(-scores, kind="stable")
-    return order[:count]
-
-
-def safe_fraction(numerator: float, denominator: float) -> float | None:
-    if denominator <= 0:
-        return None
-    return float(numerator / denominator)
 
 
 def bin_diagnostic(

@@ -79,6 +79,7 @@ verify_binary_stack
 echo "Installing RunPod-safe project dependencies..."
 python -m pip install --upgrade pip
 python -m pip install -r requirements-runpod.txt
+python -m pip install -e . --no-deps --no-build-isolation
 python -m pip check
 
 echo "Rechecking the CUDA binary stack after installation..."
@@ -87,12 +88,13 @@ verify_binary_stack
 echo "Running lightweight repository tests..."
 python tests/test_inference_io.py -v
 python tests/test_formal_inference.py -v
+python tests/test_formal_evaluation.py -v
 
 if [[ -f data/prm_router/formal/train.jsonl ]] \
     && [[ -f data/prm_router/formal/validation.jsonl ]] \
     && [[ -f data/prm_router/formal/split_manifest.json ]]; then
     echo "Checking the guarded formal plan..."
-    python experiments/feasibility/prm_router/run_formal_inference.py
+    python experiments/formal/prm_router/run_formal_inference.py
 else
     echo "Formal split files are absent; guarded plan check skipped."
     echo "Reconstruct the data using the commands in docs/runpod.md."

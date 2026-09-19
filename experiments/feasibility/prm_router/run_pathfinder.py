@@ -17,7 +17,7 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from inference_io import (
+from cl_prm.utils.inference_io import (
     finalize_run_metadata,
     initialize_run_metadata,
     prepare_resume,

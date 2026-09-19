@@ -57,23 +57,26 @@ cl-prm-project/
 ├── configs/                    # Version-pinned experiment configurations and manifests
 ├── docs/                       # Proposals, literature notes, and meeting notes
 ├── experiments/
-│   └── feasibility/            # Completed feasibility code and candidate placeholders
+│   ├── feasibility/            # Completed exploratory/feasibility workflows
+│   └── formal/prm_router/      # Guarded formal train/validation/test entry points
 ├── src/
-│   └── cl_prm/                 # Reserved for reusable formal-project modules
+│   └── cl_prm/                 # Shared data, routing, evaluation, and IO modules
 ├── data/                       # Generated local datasets, excluded from Git
 ├── outputs/                    # Generated local artifacts, excluded from Git
+├── pyproject.toml              # Editable src-package configuration
 ├── requirements.txt            # Common Python dependencies
 └── README.md
 ```
 
-The empty `src/cl_prm/` package is reserved for reusable formal router, IO, and evaluation code. The current guarded formal entry points remain under `experiments/feasibility/prm_router/` until the formal workflow stabilizes.
+`src/cl_prm/` contains the reusable implementation shared by feasibility and formal workflows. Formal-only CLI entry points live under `experiments/formal/prm_router/`; completed exploratory scripts remain under `experiments/feasibility/`.
 
 ## Environment
 
 The local ReasonEval and GenPRM feasibility experiments used Python 3.10 with an NVIDIA RTX 4060 Laptop GPU. PathFinder feasibility inference used Linux, BF16, Flash Attention 2, and an NVIDIA A40.
 
 For the local Windows environment, install the PyTorch build appropriate
-for the target CUDA version before installing `requirements.txt`.
+for the target CUDA version before installing `requirements.txt`, then install
+the project package in editable mode with `python -m pip install -e . --no-deps --no-build-isolation`.
 
 The verified RunPod image already provides a compatible PyTorch,
 CUDA, and FlashAttention binary stack. Do not replace that stack with the
@@ -103,7 +106,8 @@ Model checkpoints should be downloaded from their pinned upstream revisions and 
 ## Development Convention
 
 - Completed feasibility code remains in `experiments/feasibility/prm_router/`.
-- Reusable formal-project modules belong in `src/cl_prm/`.
+- Formal-only experiment entry points live in `experiments/formal/prm_router/`.
+- Reusable implementation belongs in `src/cl_prm/`.
 - Generated datasets and outputs remain outside Git.
 - Formal model selection uses training and validation data only.
 - The held-out test set is evaluated only after thresholds and routing rules are frozen.

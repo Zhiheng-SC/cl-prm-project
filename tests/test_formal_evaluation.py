@@ -10,16 +10,13 @@ from pathlib import Path
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-MODULE_DIR = REPO_ROOT / "experiments" / "feasibility" / "prm_router"
-sys.path.insert(0, str(MODULE_DIR))
+SRC_DIR = REPO_ROOT / "src"
+sys.path.insert(0, str(SRC_DIR))
 
-from evaluate_formal_development import make_cost_predictor, top_budget_indices  # noqa: E402
-from evaluate_formal_test import (  # noqa: E402
-    bootstrap_group_metric,
-    final_predictions,
-    selected_runtime,
-)
-from select_reasoneval_threshold import candidate_thresholds  # noqa: E402
+from cl_prm.evaluation.bootstrap import bootstrap_group_metric  # noqa: E402
+from cl_prm.evaluation.cost import make_cost_predictor, selected_runtime  # noqa: E402
+from cl_prm.evaluation.routing import final_predictions, top_budget_indices  # noqa: E402
+from cl_prm.evaluation.thresholds import candidate_thresholds  # noqa: E402
 
 
 class FormalEvaluationHelperTests(unittest.TestCase):

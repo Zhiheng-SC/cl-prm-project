@@ -83,9 +83,9 @@ The bootstrap script performs the following operations:
 
 1. verifies Python, PyTorch, CUDA, GPU, and FlashAttention;
 2. executes a real BF16 FlashAttention CUDA kernel;
-3. installs only the packages in `requirements-runpod.txt`;
+3. installs only the packages in `requirements-runpod.txt` and the local `cl_prm` package in editable mode;
 4. verifies that the binary stack still works;
-5. runs the lightweight inference-IO and guarded-runner tests;
+5. runs the lightweight inference-IO, formal-runner, and evaluation-helper tests;
 6. previews the formal inference plan when the frozen split files exist.
 
 The script never starts model inference.
@@ -104,7 +104,7 @@ python experiments/feasibility/prm_router/prepare_subset.py \
     --seed 2026 \
     --output data/prm_router/feasibility_100.jsonl
 
-python experiments/feasibility/prm_router/prepare_formal_splits.py \
+python experiments/formal/prm_router/prepare_formal_splits.py \
     --config configs/experiments/prm_router_formal.json \
     --output-dir data/prm_router/formal
 ```
@@ -112,7 +112,7 @@ python experiments/feasibility/prm_router/prepare_formal_splits.py \
 Then verify the guarded plan:
 
 ```bash
-python experiments/feasibility/prm_router/run_formal_inference.py
+python experiments/formal/prm_router/run_formal_inference.py
 ```
 
 The default command is plan-only and must end with:

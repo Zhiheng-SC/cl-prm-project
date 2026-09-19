@@ -25,7 +25,7 @@ from transformers import (
 )
 from transformers.configuration_utils import PretrainedConfig
 
-from inference_io import (
+from cl_prm.utils.inference_io import (
     finalize_run_metadata,
     initialize_run_metadata,
     prepare_resume,

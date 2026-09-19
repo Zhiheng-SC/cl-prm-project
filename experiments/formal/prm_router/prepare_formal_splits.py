@@ -20,7 +20,7 @@ from typing import Any, Iterable
 
 from datasets import DatasetDict, load_dataset
 
-from prepare_subset import (
+from cl_prm.data.prmbench import (
     choose_split,
     get_error_steps,
     get_question,

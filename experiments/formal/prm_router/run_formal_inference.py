@@ -23,7 +23,7 @@ DEFAULT_MANIFEST = (
     / "prm_router_formal_split_manifest.json"
 )
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "outputs" / "prm_router" / "formal"
-SCRIPT_DIR = Path(__file__).resolve().parent
+VERIFIER_RUNNER_DIR = REPO_ROOT / "experiments" / "feasibility" / "prm_router"
 
 
 def parse_args() -> argparse.Namespace:
@@ -172,7 +172,7 @@ def build_command(
     if verifier == "reasoneval":
         command = [
             sys.executable,
-            relative_display(SCRIPT_DIR / "run_disprm.py"),
+            relative_display(VERIFIER_RUNNER_DIR / "run_disprm.py"),
         ]
         add_common_arguments(
             command,
@@ -188,7 +188,7 @@ def build_command(
         settings = inference["pathfinder"]
         command = [
             sys.executable,
-            relative_display(SCRIPT_DIR / "run_pathfinder.py"),
+            relative_display(VERIFIER_RUNNER_DIR / "run_pathfinder.py"),
         ]
         add_common_arguments(
             command,
@@ -215,7 +215,7 @@ def build_command(
         settings = inference["genprm"]
         command = [
             sys.executable,
-            relative_display(SCRIPT_DIR / "run_genprm.py"),
+            relative_display(VERIFIER_RUNNER_DIR / "run_genprm.py"),
         ]
         add_common_arguments(
             command,
