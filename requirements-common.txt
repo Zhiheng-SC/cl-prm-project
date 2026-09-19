@@ -1,4 +1,4 @@
-# Shared pure-Python / platform-independent dependencies.
+# Shared non-CUDA-coupled Python dependencies.
 # CUDA-coupled packages such as PyTorch and FlashAttention are handled
 # separately for local and RunPod environments.
 
