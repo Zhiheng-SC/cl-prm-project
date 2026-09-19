@@ -29,6 +29,12 @@ See:
 - [PRM Router feasibility study](experiments/feasibility/prm_router/README.md)
 - [Expanded 200-example feasibility results](docs/results/prm_router_expanded_feasibility_200.md)
 
+## Project Resources
+
+- **Code, protocol, and documentation:** this GitHub repository.
+- **Generated experiment artifacts:** [`cl-prm-team/cl-prm-artifacts`](https://huggingface.co/datasets/cl-prm-team/cl-prm-artifacts) (private during development).
+- **Internal writing workspace:** shared Overleaf project (team access only; no editable share link is stored in Git).
+
 ## Primary Candidate
 
 The PRM Router project studies whether pair-specific correction utility can allocate limited verification compute more effectively than confidence-based escalation.
@@ -102,7 +108,7 @@ Raw and generated data are not committed to Git.
 - `configs/experiments/prm_router_formal.json` pins dataset and model revisions.
 - `configs/experiments/prm_router_formal_split_manifest.json` records formal split hashes and statistics.
 - `outputs/README.md` defines the local and shared artifact policy.
-- `cl-prm-team/cl-prm-artifacts` is the private shared Hugging Face repository for generated inference outputs and analysis artifacts.
+- [`cl-prm-team/cl-prm-artifacts`](https://huggingface.co/datasets/cl-prm-team/cl-prm-artifacts) is the private shared Hugging Face repository for generated inference outputs and analysis artifacts.
 
 Model checkpoints should be downloaded from their pinned upstream revisions and must not be committed.
 
