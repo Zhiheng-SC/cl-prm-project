@@ -38,3 +38,20 @@ The team uses the private Hugging Face Dataset repository `cl-prm-team/cl-prm-ar
 Do not share model checkpoints when they can be downloaded from the pinned upstream revision. Never commit or upload authentication tokens.
 
 Compact machine-readable summaries (for example, `ovm-eval.json`) may remain in GitHub when they are small, human-auditable references rather than raw per-example outputs.
+
+## Shared Formal Artifact Layout
+
+The private Hugging Face artifact repository mirrors the formal stages:
+
+```text
+formal/
+├── train/
+├── validation/
+└── test/
+```
+
+Upload train and validation artifacts after each completed development run and
+hash verification. Upload held-out test artifacts only after the protocol has
+been frozen and test inference has been explicitly unlocked. The operational
+commands are documented in `experiments/formal/prm_router/README.md`.
+
