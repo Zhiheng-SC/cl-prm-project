@@ -11,6 +11,7 @@ from sklearn.metrics import balanced_accuracy_score
 
 from cl_prm.data.records import read_records
 from cl_prm.evaluation.thresholds import candidate_thresholds
+from cl_prm.utils.formal_config import validate_formal_config
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -36,6 +37,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = json.loads(args.config.read_text(encoding="utf-8"))
+    validate_formal_config(config)
     metric = str(config["base_threshold"]["selection_metric"])
     split = str(config["base_threshold"]["selection_split"])
     if split != "validation":

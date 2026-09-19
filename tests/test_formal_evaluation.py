@@ -17,6 +17,7 @@ from cl_prm.evaluation.bootstrap import bootstrap_group_metric  # noqa: E402
 from cl_prm.evaluation.cost import make_cost_predictor, selected_runtime  # noqa: E402
 from cl_prm.evaluation.routing import final_predictions, top_budget_indices  # noqa: E402
 from cl_prm.evaluation.thresholds import candidate_thresholds  # noqa: E402
+from cl_prm.utils.formal_config import validate_formal_config  # noqa: E402
 
 
 class FormalEvaluationHelperTests(unittest.TestCase):
@@ -62,6 +63,16 @@ class FormalEvaluationHelperTests(unittest.TestCase):
             alpha=float(config["routing"]["cost_aware"]["ridge_alpha"])
         )
         self.assertEqual(predictor.named_steps["ridge"].alpha, 1.0)
+        validate_formal_config(config)
+
+    def test_formal_config_rejects_feature_order_drift(self) -> None:
+        config_path = REPO_ROOT / "configs" / "experiments" / "prm_router_formal.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["routing"]["pre_call_features"] = list(
+            reversed(config["routing"]["pre_call_features"])
+        )
+        with self.assertRaisesRegex(ValueError, "routing.pre_call_features"):
+            validate_formal_config(config)
 
 
 if __name__ == "__main__":

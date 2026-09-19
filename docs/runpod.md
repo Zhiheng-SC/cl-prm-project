@@ -51,7 +51,10 @@ HF_HUB_ENABLE_HF_TRANSFER=0
 PYTHONUNBUFFERED=1
 ```
 
-Use read-only or minimum-scope tokens where possible.
+Use minimum-scope tokens. A read token is sufficient for downloading public or
+authorized model/data resources. If artifacts will be uploaded directly from
+the Pod, use a fine-grained Hugging Face token with write access limited to
+`cl-prm-team/cl-prm-artifacts`; do not reuse a broad personal token.
 
 ## First startup
 
@@ -121,9 +124,9 @@ The default command is plan-only and must end with:
 Plan only; no model inference was started.
 ```
 
-Do not add `--execute` until the team has selected the project and the
-development run has been approved. Do not unlock the test phase before the
-validation-selected protocol is frozen.
+Do not add `--execute` until the team has confirmed the common
+GPU/environment and approved the formal development run. Do not unlock the
+test phase before the validation-selected protocol is frozen.
 
 ## Stop and termination policy
 
@@ -138,5 +141,6 @@ Keep all recoverable working state under `/workspace`.
 - RunPod storage is not the authoritative long-term backup.
 
 Before termination, verify output row counts, metadata status and SHA256, then
-download an archive containing outputs, metadata, frozen configuration, split
-manifest, and the code revision used for the run.
+archive the generated outputs and metadata in the private
+`cl-prm-team/cl-prm-artifacts` repository. The Git commit, frozen
+configuration, and tracked split manifest remain in GitHub.

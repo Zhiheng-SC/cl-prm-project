@@ -14,6 +14,8 @@ from cl_prm.data.records import (
     correctness_arrays,
 )
 from cl_prm.evaluation.cost import cost_features, make_cost_predictor
+from cl_prm.utils.formal_config import validate_formal_config
+
 from cl_prm.evaluation.routing import (
     GAIN_CLASSES,
     gain_probabilities,
@@ -119,6 +121,7 @@ def main() -> None:
         raise ValueError("--reason-eval-threshold must be in [0, 1].")
 
     config = json.loads(args.config.read_text(encoding="utf-8"))
+    validate_formal_config(config)
     routing_config = config["routing"]
     cost_config = routing_config["cost_aware"]
     diagnostic_config = config["evaluation"]["diagnostic_analyses"]

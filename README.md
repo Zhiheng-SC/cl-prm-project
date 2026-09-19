@@ -25,6 +25,7 @@ results.
 See:
 
 - [PRM Router proposal](docs/proposals/prm_router.md)
+- [Formal PRM Router runbook](experiments/formal/prm_router/README.md)
 - [PRM Router feasibility study](experiments/feasibility/prm_router/README.md)
 - [Expanded 200-example feasibility results](docs/results/prm_router_expanded_feasibility_200.md)
 
@@ -64,7 +65,9 @@ cl-prm-project/
 ├── data/                       # Generated local datasets, excluded from Git
 ├── outputs/                    # Generated local artifacts, excluded from Git
 ├── pyproject.toml              # Editable src-package configuration
-├── requirements.txt            # Common Python dependencies
+├── requirements-common.txt     # Shared Python dependencies
+├── requirements.txt            # Local/workstation dependency entry point
+├── requirements-runpod.txt     # RunPod-safe dependency entry point
 └── README.md
 ```
 

@@ -7,6 +7,8 @@ name = "cl-prm"
 version = "0.1.0"
 description = "Shared utilities for the CL-PRM course project"
 requires-python = ">=3.10"
+# Runtime dependencies are installed through requirements*.txt so local and
+# RunPod environments can keep different CUDA-coupled PyTorch stacks.
 dependencies = []
 
 [tool.setuptools.packages.find]

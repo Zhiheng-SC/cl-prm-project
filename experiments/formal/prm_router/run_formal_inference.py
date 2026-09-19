@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from cl_prm.utils.formal_config import validate_formal_config
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG = (
@@ -242,6 +244,7 @@ def build_command(
 def main() -> None:
     args = parse_args()
     config = read_json(args.config)
+    validate_formal_config(config)
     manifest = read_json(args.manifest)
 
     verifiers = list(dict.fromkeys(args.verifiers))

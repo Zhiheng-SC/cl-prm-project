@@ -25,6 +25,11 @@ This produces:
 - `data/prm_router/formal/test.jsonl` with 400 examples;
 - `data/prm_router/formal/split_manifest.json`.
 
-Compare the generated manifest with `configs/experiments/prm_router_formal_split_manifest.json`. Dataset fingerprint, counts, and all three SHA256 hashes must match before formal inference begins.
+The generated `split_manifest.json` is a local audit record. Before formal
+inference begins, run the guarded plan in
+`experiments/formal/prm_router/run_formal_inference.py`; it validates the
+generated split files against the tracked reference manifest at
+`configs/experiments/prm_router_formal_split_manifest.json`, including
+example counts and SHA256 hashes.
 
 Do not commit generated JSONL files, model checkpoints, Hugging Face caches, or private access tokens.

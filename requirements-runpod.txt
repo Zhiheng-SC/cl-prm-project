@@ -12,9 +12,4 @@
 # Run scripts/bootstrap_runpod.sh from the repository root. It validates
 # the binary stack before and after installing these packages.
 
-numpy==1.26.4
-scipy==1.15.3
-scikit-learn==1.5.2
-transformers==4.48.2
-datasets==4.8.5
-accelerate==1.2.0
+-r requirements-common.txt

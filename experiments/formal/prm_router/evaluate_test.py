@@ -18,6 +18,8 @@ from cl_prm.evaluation.cost import (
     make_cost_predictor,
     selected_runtime,
 )
+from cl_prm.utils.formal_config import validate_formal_config
+
 from cl_prm.evaluation.routing import (
     final_predictions,
     gain_probabilities,
@@ -83,6 +85,7 @@ def main() -> None:
         )
 
     config = json.loads(args.config.read_text(encoding="utf-8"))
+    validate_formal_config(config)
     threshold_payload = json.loads(
         args.threshold_selection.read_text(encoding="utf-8")
     )
