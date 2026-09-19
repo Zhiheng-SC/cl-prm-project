@@ -14,6 +14,8 @@ from cl_prm.data.records import (
     correctness_arrays,
 )
 from cl_prm.evaluation.cost import cost_features, make_cost_predictor
+from cl_prm.utils.formal_config import validate_formal_config
+
 from cl_prm.evaluation.routing import (
     GAIN_CLASSES,
     gain_probabilities,
