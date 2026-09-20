@@ -45,7 +45,8 @@ Run `GAIR/ReasonEval-7B` on every reasoning-step prefix and record:
 * its validity score;
 * its binary prediction;
 * step position and solution length;
-* question, prefix, and current-step lengths.
+* question and current-step lengths;
+* exact ReasonEval input-token count.
 
 ### Stage 2: Pre-call utility routing
 
@@ -221,6 +222,8 @@ Fine-grained signals did not outperform the simpler overall feature set in this 
 A subsequent development-only feasibility study used the first 200 records of the frozen formal training split (170 original-question groups) and left validation and test untouched. ReasonEval accuracy at the development threshold of 0.50 was 0.680, PathFinder accuracy was 0.815, and the full pairwise oracle upper bound was 0.865. Across five grouped-CV seeds, mean expected-gain-router accuracy was 0.774 at the primary 20% PathFinder budget and 0.827 at 40%, with mean benefit average precision of 0.629. These results are development evidence only and are not final held-out claims.
 
 The expanded study is considered complete. No additional feasibility-scale GPU inference is required before formal train-and-validation inference.
+
+A CPU-only pre-formal ablation on the same inspected 200-example development subset was used to finalize the lightweight Router specification before formal protocol freeze. Minimal nonlinear runtime terms did not improve grouped-CV PathFinder runtime prediction, so the linear Ridge cost predictor was retained. Direct and factorized utility alternatives also did not improve final routing. The only adopted refinement was to replace raw `prefix_characters` with exact `disprm_input_tokens` in the nine-feature Router; see [`docs/results/prm_router_preformal_ablations.md`](../results/prm_router_preformal_ablations.md). No further feature or model-family tuning will be performed on this 200-example subset.
 
 ## Formal Experiment Plan
 

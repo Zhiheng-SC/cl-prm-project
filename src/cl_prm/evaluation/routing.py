@@ -20,7 +20,7 @@ FEATURE_NAMES = [
     "current_step",
     "total_steps",
     "question_characters",
-    "prefix_characters",
+    "disprm_input_tokens",
     "current_step_characters",
 ]
 
@@ -51,7 +51,7 @@ def build_features(
         float(current_step),
         float(total_steps),
         float(len(question)),
-        float(len(prefix_text)),
+        float(record.get("disprm_input_tokens", 0)),
         float(len(current_step_text)),
     ]
 

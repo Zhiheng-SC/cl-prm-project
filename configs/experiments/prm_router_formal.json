@@ -80,7 +80,7 @@
       "current_step",
       "total_steps",
       "question_characters",
-      "prefix_characters",
+      "disprm_input_tokens",
       "current_step_characters"
     ],
     "cost_aware": {

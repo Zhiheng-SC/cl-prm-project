@@ -616,3 +616,43 @@ GenPRM and ProcessBench remain optional extensions after the primary ReasonEval-
 The current experiment demonstrates verifier complementarity, measurable routing benefit, and a substantial gap between heuristic and learned routing. The direction is technically feasible and empirically promising.
 
 The reported values remain exploratory. The direction has been selected; the next decisive evidence comes from the frozen formal train/validation/test workflow documented under `experiments/formal/prm_router/`.
+
+
+## Pre-formal CPU ablation
+
+Before formal train/validation inference, the already inspected expanded-200
+training-pool artifacts can be reused for a small development-only ablation.
+This does not run any verifier and must not be interpreted as formal validation
+or held-out evidence.
+
+The script compares:
+
+- the current linear Ridge runtime predictor against two minimal nonlinear
+  basis expansions;
+- the current nine router features against small additions from already saved
+  ReasonEval outputs;
+- multinomial expected gain against direct Ridge regression on
+  \(g \in \{-1,0,+1\}\).
+
+Run from the repository root after downloading the expanded-200 ReasonEval and
+PathFinder JSONL files:
+
+~~~bash
+python experiments/feasibility/prm_router/analyze_preformal_ablations.py \
+  --reasoneval <PATH_TO_REASONEVAL_200_JSONL> \
+  --pathfinder <PATH_TO_PATHFINDER_200_JSONL>
+~~~
+
+The default threshold is 0.50 and the default grouped-CV seeds are
+\`7, 42, 2026, 20260903, 20260915\`.
+
+Outputs are written to:
+
+~~~text
+outputs/prm_router/robustness/preformal_ablations.json
+outputs/prm_router/robustness/preformal_ablations.md
+~~~
+
+Keep the simpler current specification unless a more complex variant shows a
+clear and consistent grouped-CV improvement. Harm AP is diagnostic only because
+the harmful class is sparse.
