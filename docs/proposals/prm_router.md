@@ -119,9 +119,12 @@ PathFinder features are used only after the call and therefore do not leak into 
   inference procedure.
 * `GenPRM/GenPRM-7B` is the preferred candidate for an optional formal
   ReasonEval-to-GenPRM verifier-pair extension if time and compute permit.
-* Any GenPRM-7B extension should first be validated with the official GenPRM
-  inference implementation, or with a clearly documented approximation if
-  full reproduction is not practical.
+* An official-path GenPRM-7B deployment smoke test has passed on a single
+  NVIDIA A40; see
+  [`docs/results/genprm_7b_official_smoke.md`](../results/genprm_7b_official_smoke.md).
+* Before any formal GenPRM-7B comparison, the Hugging Face model revision must
+  be pinned and the official inference semantics must be adapted and validated
+  on PRMBench examples.
 * GenPRM remains an optional comparison rather than the primary cascade.
 
 ## Dataset
