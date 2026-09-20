@@ -137,7 +137,7 @@ Completed development subsets:
 * feasibility subset: 50 correct and 50 erroneous steps;
 * feasibility random seed: `2026`.
 
-If selected as the final project, the current 100 examples will remain a frozen development pilot. These records and all other records derived from the same normalized `original_question` groups will be excluded from every formal split.
+The current 100 examples remain a frozen development pilot. These records and all other records derived from the same normalized `original_question` groups are excluded from every formal split.
 
 New data will be split approximately into:
 
@@ -252,7 +252,9 @@ The existing 100-example feasibility set will not be included in the final held-
 
 ### 3. Run verifier inference
 
-Run ReasonEval, PathFinder, and the selected comparison verifier on the same examples. Formal runtime measurements must be collected on the same GPU using the same measurement protocol.
+Run ReasonEval and PathFinder on the same formal examples. Formal runtime measurements for the primary study must be collected on the same GPU using the same measurement protocol.
+
+If an optional GenPRM verifier-pair extension is activated, its inference is run separately under the pre-specified extension protocol and does not alter the primary ReasonEval--PathFinder evaluation.
 
 For every example, save:
 
