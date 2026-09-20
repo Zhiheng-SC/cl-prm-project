@@ -233,3 +233,6 @@ checkpoints/
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Locally downloaded shared artifacts
+hf_artifacts/
