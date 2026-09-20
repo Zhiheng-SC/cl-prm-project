@@ -7,7 +7,8 @@ test data.
 It compares:
 1. current linear cost Ridge vs minimal nonlinear basis expansions;
 2. current router features vs small information-preserving additions;
-3. multinomial expected gain vs direct Ridge regression on g in {-1, 0, +1}.
+3. multinomial expected gain vs direct Ridge regression on g in {-1, 0, +1};
+4. a factorized correction-utility model for rare harmful replacements.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from typing import Any
 import numpy as np
 from datasets import load_dataset
 from scipy.stats import spearmanr
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import average_precision_score, mean_absolute_error, mean_squared_error
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.pipeline import Pipeline
@@ -107,6 +108,23 @@ def ridge(alpha: float) -> Pipeline:
     )
 
 
+def probability_logistic(seed: int) -> Pipeline:
+    """Unweighted logistic model used when probabilities enter utility."""
+    return Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            (
+                "classifier",
+                LogisticRegression(
+                    solver="liblinear",
+                    max_iter=2000,
+                    random_state=seed,
+                ),
+            ),
+        ]
+    )
+
+
 def router_sets(
     records: list[dict[str, Any]],
     scores: np.ndarray,
@@ -116,12 +134,17 @@ def router_sets(
     p_positive = field(records, "disprm_probability_positive")[:, None]
     input_tokens = field(records, "disprm_input_tokens")[:, None]
     f1 = np.c_[f0, p_positive]
+    f_token_add = np.c_[f0, input_tokens]
+    f_token_replace_prefix = f0.copy()
+    f_token_replace_prefix[:, 7] = input_tokens[:, 0]
     f2 = np.c_[f1, input_tokens]
     f3 = np.c_[f2, scores * f0[:, 3]]
     return {
         "F0_current_9": f0,
         "F1_plus_positive_probability": f1,
-        "F2_plus_input_tokens": f2,
+        "F_token_add": f_token_add,
+        "F_token_replace_prefix": f_token_replace_prefix,
+        "F2_plus_positive_probability_and_input_tokens": f2,
         "F3_plus_score_x_step_position": f3,
     }
 
@@ -211,11 +234,19 @@ def evaluate_seed(
 
     multinomial = {}
     direct = {}
+    factorized = {}
     class_to_col = {label: i for i, label in enumerate(GAIN_CLASSES)}
+    base_correct = base_predictions == labels
+    second_correct = second_predictions == labels
+    base_failure = (~base_correct).astype(int)
 
     for name, x in router_features_by_name.items():
         probs = np.zeros((len(x), 3))
         direct_score = np.zeros(len(x))
+        p_base_failure = np.zeros(len(x))
+        p_pf_correct_if_base_wrong = np.zeros(len(x))
+        p_pf_harm_if_base_correct = np.zeros(len(x))
+
         for fold_id, (train_idx, test_idx) in enumerate(splits, start=1):
             model = make_expected_gain_router(seed + fold_id)
             model.fit(x[train_idx], gains[train_idx])
@@ -225,9 +256,49 @@ def evaluate_seed(
             direct_model.fit(x[train_idx], gains[train_idx].astype(float))
             direct_score[test_idx] = direct_model.predict(x[test_idx])
 
+            failure_model = probability_logistic(seed + 100 + fold_id)
+            failure_model.fit(x[train_idx], base_failure[train_idx])
+            p_base_failure[test_idx] = failure_model.predict_proba(
+                x[test_idx]
+            )[:, 1]
+
+            wrong_train = train_idx[~base_correct[train_idx]]
+            correction_target = second_correct[wrong_train].astype(int)
+            if len(np.unique(correction_target)) != 2:
+                raise ValueError(
+                    f"Seed {seed} fold {fold_id} lacks a conditional "
+                    "PathFinder-correction class."
+                )
+            correction_model = probability_logistic(seed + 200 + fold_id)
+            correction_model.fit(x[wrong_train], correction_target)
+            p_pf_correct_if_base_wrong[test_idx] = correction_model.predict_proba(
+                x[test_idx]
+            )[:, 1]
+
+            correct_train = train_idx[base_correct[train_idx]]
+            harm_target = (~second_correct[correct_train]).astype(int)
+            if len(np.unique(harm_target)) != 2:
+                raise ValueError(
+                    f"Seed {seed} fold {fold_id} lacks a conditional "
+                    "PathFinder-harm class."
+                )
+            harm_model = probability_logistic(seed + 300 + fold_id)
+            harm_model.fit(x[correct_train], harm_target)
+            p_pf_harm_if_base_correct[test_idx] = harm_model.predict_proba(
+                x[test_idx]
+            )[:, 1]
+
         p_harm = probs[:, class_to_col[-1]]
         p_benefit = probs[:, class_to_col[1]]
         expected_gain = p_benefit - p_harm
+
+        factorized_benefit = (
+            p_base_failure * p_pf_correct_if_base_wrong
+        )
+        factorized_harm = (
+            (1.0 - p_base_failure) * p_pf_harm_if_base_correct
+        )
+        factorized_gain = factorized_benefit - factorized_harm
 
         multinomial[name] = {
             "benefit_ap": float(average_precision_score(benefit, p_benefit)),
@@ -254,11 +325,46 @@ def evaluate_seed(
             ),
         }
 
+        wrong_mask = ~base_correct
+        correct_mask = base_correct
+        factorized[name] = {
+            "benefit_ap": float(
+                average_precision_score(benefit, factorized_benefit)
+            ),
+            "harm_ap": float(
+                average_precision_score(harm, factorized_harm)
+            ),
+            "base_failure_ap": float(
+                average_precision_score(base_failure, p_base_failure)
+            ),
+            "conditional_correction_ap": float(
+                average_precision_score(
+                    second_correct[wrong_mask].astype(int),
+                    p_pf_correct_if_base_wrong[wrong_mask],
+                )
+            ),
+            "conditional_harm_ap": float(
+                average_precision_score(
+                    (~second_correct[correct_mask]).astype(int),
+                    p_pf_harm_if_base_correct[correct_mask],
+                )
+            ),
+            "budgets": route_summary(
+                factorized_gain,
+                budgets,
+                labels,
+                base_predictions,
+                second_predictions,
+                gains,
+            ),
+        }
+
     return {
         "seed": seed,
         "cost": cost_results,
         "multinomial": multinomial,
         "direct_utility_ridge": direct,
+        "factorized_utility": factorized,
     }
 
 
@@ -273,7 +379,12 @@ def summarize(values: list[float | int | None]) -> dict[str, float | None]:
 
 
 def aggregate(seed_results: list[dict[str, Any]], budgets: list[int]) -> dict[str, Any]:
-    out: dict[str, Any] = {"cost": {}, "multinomial": {}, "direct_utility_ridge": {}}
+    out: dict[str, Any] = {
+        "cost": {},
+        "multinomial": {},
+        "direct_utility_ridge": {},
+        "factorized_utility": {},
+    }
 
     for name in seed_results[0]["cost"]:
         out["cost"][name] = {
@@ -281,7 +392,7 @@ def aggregate(seed_results: list[dict[str, Any]], budgets: list[int]) -> dict[st
             for metric in ("mae", "rmse", "spearman")
         }
 
-    for estimator in ("multinomial", "direct_utility_ridge"):
+    for estimator in ("multinomial", "direct_utility_ridge", "factorized_utility"):
         for feature_name in seed_results[0][estimator]:
             rows = [row[estimator][feature_name] for row in seed_results]
             summary = {
@@ -289,6 +400,13 @@ def aggregate(seed_results: list[dict[str, Any]], budgets: list[int]) -> dict[st
                 "harm_ap": summarize([row["harm_ap"] for row in rows]),
                 "budgets": {},
             }
+            if estimator == "factorized_utility":
+                for metric in (
+                    "base_failure_ap",
+                    "conditional_correction_ap",
+                    "conditional_harm_ap",
+                ):
+                    summary[metric] = summarize([row[metric] for row in rows])
             for budget in budgets:
                 key = str(budget)
                 summary["budgets"][key] = {
@@ -338,6 +456,7 @@ def markdown(payload: dict[str, Any]) -> str:
     for estimator, title in (
         ("multinomial", "Multinomial expected gain"),
         ("direct_utility_ridge", "Direct utility Ridge"),
+        ("factorized_utility", "Factorized correction utility"),
     ):
         lines += [
             "",
@@ -355,6 +474,21 @@ def markdown(payload: dict[str, Any]) -> str:
                 f"{fmt(b20['beneficial'], 2)} / {fmt(b20['harmful'], 2)} | "
                 f"{fmt(b40['accuracy'])} |"
             )
+
+    factorized_rows = agg["factorized_utility"]
+    lines += [
+        "",
+        "## Factorized component diagnostics",
+        "",
+        "| Features | RE failure AP | PF correction given RE wrong AP | PF harm given RE correct AP |",
+        "|---|---:|---:|---:|",
+    ]
+    for name, row in factorized_rows.items():
+        lines.append(
+            f"| {name} | {fmt(row['base_failure_ap'])} | "
+            f"{fmt(row['conditional_correction_ap'])} | "
+            f"{fmt(row['conditional_harm_ap'])} |"
+        )
 
     lines += [
         "",
