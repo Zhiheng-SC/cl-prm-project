@@ -4,11 +4,24 @@ Datasets generated for this project are stored locally under `data/` and are exc
 
 ## Reconstruct the Feasibility Pilot
 
+The reconstruction script defaults to the frozen PRMBench revision used by
+the formal experiment:
+
+`5cc7683d0ae5797f84d7aeac0607966f277c39e1`
+
 From the repository root:
 
 ```bash
-python experiments/feasibility/prm_router/prepare_subset.py --n-correct 50 --n-error 50 --seed 2026 --output data/prm_router/feasibility_100.jsonl
+python experiments/feasibility/prm_router/prepare_subset.py \\
+  --n-correct 50 \\
+  --n-error 50 \\
+  --seed 2026 \\
+  --output data/prm_router/feasibility_100.jsonl
 ```
+
+The dataset revision can be overridden explicitly with `--revision`, but the
+frozen pilot used by the formal experiment should not be regenerated from a
+different revision.
 
 ## Reconstruct the Formal Splits
 
