@@ -27,6 +27,9 @@ from cl_prm.data.prmbench import (
 
 
 DATASET_NAME = "hitsmy/PRMBench_Preview"
+DEFAULT_DATASET_REVISION = (
+    "5cc7683d0ae5797f84d7aeac0607966f277c39e1"
+)
 
 
 def prepare_subset(
@@ -165,6 +168,12 @@ def main() -> None:
         help="Dataset split. By default, use train or the first split.",
     )
     parser.add_argument(
+        "--revision",
+        type=str,
+        default=DEFAULT_DATASET_REVISION,
+        help="Pinned Hugging Face dataset revision.",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path("data/prm_router/smoke_test.jsonl"),
@@ -174,7 +183,8 @@ def main() -> None:
     args = parser.parse_args()
 
     print(f"Loading dataset: {DATASET_NAME}")
-    dataset = load_dataset(DATASET_NAME)
+    print(f"Dataset revision: {args.revision}")
+    dataset = load_dataset(DATASET_NAME, revision=args.revision)
 
     split_name, rows = choose_split(dataset, args.split)
 
