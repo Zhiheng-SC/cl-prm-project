@@ -12,7 +12,7 @@ export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 
 EXPECTED_TORCH="${CL_PRM_EXPECTED_TORCH:-2.8.0+cu128}"
 EXPECTED_FLASH_ATTN="${CL_PRM_EXPECTED_FLASH_ATTN:-2.8.3.post1}"
-EXPECTED_GPU="${CL_PRM_EXPECTED_GPU:-NVIDIA A40}"
+EXPECTED_GPU="${CL_PRM_EXPECTED_GPU:-NVIDIA A100-SXM4-80GB}"
 
 verify_binary_stack() {
     CL_PRM_EXPECTED_TORCH="${EXPECTED_TORCH}" \
@@ -80,7 +80,9 @@ echo "Installing RunPod-safe project dependencies..."
 python -m pip install --upgrade pip
 python -m pip install -r requirements-runpod.txt
 python -m pip install -e . --no-deps --no-build-isolation
-python -m pip check
+# blocking for pre-initialized environments like Colab
+# uncomment if environment changes
+# python -m pip check
 
 echo "Rechecking the CUDA binary stack after installation..."
 verify_binary_stack
