@@ -26,8 +26,8 @@
       "revision": "84a7412511836cb4ed74377d9c703eb5638d814c"
     },
     "alternative_second_stage": {
-      "name": "GenPRM/GenPRM-1.5B",
-      "revision": "a0fa69768f4524257e1730fec639aa7781c7fa82"
+      "name": "GenPRM/GenPRM-7B",
+      "revision": "0ea3fa755896b5448a33458fd0b010501dbea21e"
     }
   },
   "runtime": {
