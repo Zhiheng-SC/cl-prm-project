@@ -69,19 +69,19 @@ def main() -> None:
     if set(np.unique(tr["gain"])) != set(GAIN_CLASSES):
         raise ValueError("Training split lacks a gain class; do not fit the multinomial router.")
 
-    router = make_expected_gain_router(seed=2026)
+    formal = json.loads((REPO_ROOT / "configs/experiments/prm_router_formal.json").read_text())
+    settings = formal["routing"]["cost_aware"]
+    budget = float(formal["routing"]["primary_call_budget"])
+    router = make_expected_gain_router(seed=int(formal["formal_splits"]["seed"]))
     router.fit(router_features(tr_base, tr["scores"], args.reason_eval_threshold), tr["gain"])
     probs = gain_probabilities(router, router_features(va_base, va["scores"], args.reason_eval_threshold))
     p_harm, p_benefit = probs[:, 0], probs[:, 2]
-    cost = make_cost_predictor(alpha=1.0)
+    cost = make_cost_predictor(alpha=float(settings["ridge_alpha"]))
     cost.fit(cost_features(tr_base), tr["runtime"])
     pred_cost = np.maximum(cost.predict(cost_features(va_base)), 0.0)
     median_cost = float(np.median(tr["runtime"]))
     # Match the formal RE->PF candidate grid and call budget while refitting
     # every learned component for this model.
-    formal = json.loads((REPO_ROOT / "configs/experiments/prm_router_formal.json").read_text())
-    settings = formal["routing"]["cost_aware"]
-    budget = float(formal["routing"]["primary_call_budget"])
     candidates = []
     for lambda_h in settings["lambda_h_candidates"]:
         for mu in settings["mu_candidates"]:
