@@ -1,0 +1,257 @@
+"""Generate final PDF figures from frozen formal-analysis artifacts."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+REPO_ROOT = Path(__file__).resolve().parents[4]
+DEFAULT_HF_ROOT = REPO_ROOT.parent / "cl_finalproject_hg"
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "outputs" / "prm_router" / "formal" / "analysis"
+
+METHODS = [
+    "uncertainty",
+    "failure_prediction",
+    "benefit_only",
+    "expected_gain",
+    "cost_aware",
+]
+LABELS = {
+    "uncertainty": "Uncertainty",
+    "failure_prediction": "Failure prediction",
+    "benefit_only": "Benefit only",
+    "expected_gain": "Expected gain",
+    "cost_aware": "Cost aware",
+}
+COLORS = {
+    "uncertainty": "#0072B2",
+    "failure_prediction": "#E69F00",
+    "benefit_only": "#009E73",
+    "expected_gain": "#CC79A7",
+    "cost_aware": "#D55E00",
+}
+MARKERS = {
+    "uncertainty": "o",
+    "failure_prediction": "s",
+    "benefit_only": "^",
+    "expected_gain": "D",
+    "cost_aware": "P",
+}
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--hf-root", type=Path, default=DEFAULT_HF_ROOT)
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    return parser.parse_args()
+
+
+def read_json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def style_axis(axis: plt.Axes) -> None:
+    axis.grid(True, color="#D9D9D9", linewidth=0.7, alpha=0.8)
+    axis.set_axisbelow(True)
+    axis.spines["top"].set_visible(False)
+    axis.spines["right"].set_visible(False)
+
+
+def save(figure: plt.Figure, path: Path) -> None:
+    figure.savefig(path, metadata={"Creator": "CL-PRM analysis"})
+    plt.close(figure)
+
+
+def accuracy_vs_budget(formal: dict[str, Any], path: Path) -> None:
+    figure, axis = plt.subplots(figsize=(7.2, 4.6), constrained_layout=True)
+    for method in METHODS:
+        rows = formal["routing_curves"][method]
+        axis.plot(
+            [100.0 * row["call_budget"] for row in rows],
+            [100.0 * row["accuracy"] for row in rows],
+            label=LABELS[method],
+            color=COLORS[method],
+            marker=MARKERS[method],
+            linewidth=2.0,
+            markersize=5.5,
+        )
+    re_accuracy = 100.0 * formal["accuracy"]["reasoneval_only"]["estimate"]
+    pf_accuracy = 100.0 * formal["accuracy"]["pathfinder_only"]["estimate"]
+    axis.axhline(re_accuracy, color="#555555", linestyle="--", label="ReasonEval only")
+    axis.axhline(pf_accuracy, color="#000000", linestyle=":", label="PathFinder only")
+    axis.axvline(20.0, color="#777777", linewidth=1.0, alpha=0.8)
+    axis.set_ylim(69.5, 82.5)
+    axis.text(21.0, 82.15, "Frozen primary budget", fontsize=8, va="top")
+    axis.set_xlabel("PathFinder call budget (%)")
+    axis.set_ylabel("Held-out accuracy (%)")
+    axis.set_title("Accuracy versus PathFinder call budget")
+    axis.set_xticks([10, 20, 30, 40, 50, 75, 100])
+    style_axis(axis)
+    axis.legend(ncol=2, fontsize=8, frameon=False)
+    save(figure, path)
+
+
+def accuracy_vs_runtime(formal: dict[str, Any], path: Path) -> None:
+    figure, axis = plt.subplots(figsize=(7.2, 4.6))
+    figure.subplots_adjust(left=0.14, right=0.98, bottom=0.15, top=0.90)
+    for method in METHODS:
+        rows = formal["routing_curves"][method]
+        axis.plot(
+            [row["cascade_total_seconds"] for row in rows],
+            [100.0 * row["accuracy"] for row in rows],
+            label=LABELS[method],
+            color=COLORS[method],
+            marker=MARKERS[method],
+            linewidth=2.0,
+            markersize=5.5,
+        )
+    axis.scatter(
+        [formal["runtime"]["reasoneval_only_total_seconds"]],
+        [100.0 * formal["accuracy"]["reasoneval_only"]["estimate"]],
+        color="#555555",
+        marker="X",
+        s=70,
+        label="ReasonEval only (standalone)",
+        zorder=5,
+    )
+    axis.scatter(
+        [formal["runtime"]["pathfinder_only_total_seconds"]],
+        [100.0 * formal["accuracy"]["pathfinder_only"]["estimate"]],
+        color="#000000",
+        marker="*",
+        s=100,
+        label="PathFinder only (standalone)",
+        zorder=5,
+    )
+    axis.annotate(
+        "100% cascade",
+        xy=(
+            formal["routing_curves"]["expected_gain"][-1]["cascade_total_seconds"],
+            100.0 * formal["routing_curves"]["expected_gain"][-1]["accuracy"],
+        ),
+        xytext=(-72, -22),
+        textcoords="offset points",
+        arrowprops={"arrowstyle": "->", "color": "#555555"},
+        fontsize=8,
+    )
+    axis.set_xlabel("Measured total runtime (seconds)")
+    axis.set_ylabel("Held-out accuracy (%)")
+    axis.set_title("Accuracy versus measured sequential-cascade runtime")
+    axis.set_ylim(69.5, 82.5)
+    style_axis(axis)
+    axis.legend(ncol=2, fontsize=7.8, frameon=False)
+    save(figure, path)
+
+
+def call_outcomes(analysis: dict[str, Any], path: Path) -> None:
+    rows = [
+        row
+        for row in analysis["selection_outcomes_20pct"]
+        if row["method"] in METHODS
+    ]
+    labels = [LABELS[row["method"]] for row in rows]
+    beneficial = np.asarray([row["beneficial"] for row in rows])
+    neutral = np.asarray([row["neutral"] for row in rows])
+    harmful = np.asarray([row["harmful"] for row in rows])
+    positions = np.arange(len(rows))
+    figure, axis = plt.subplots(figsize=(7.2, 4.7), constrained_layout=True)
+    axis.bar(positions, beneficial, color="#009E73", label="Beneficial")
+    axis.bar(positions, neutral, bottom=beneficial, color="#BDBDBD", label="Neutral")
+    axis.bar(
+        positions,
+        harmful,
+        bottom=beneficial + neutral,
+        color="#D55E00",
+        label="Harmful",
+    )
+    for index, row in enumerate(rows):
+        axis.text(index, 82.0, f"Net {row['net_gain']:+d}", ha="center", fontsize=8)
+    axis.set_xticks(positions, labels, rotation=18, ha="right")
+    axis.set_ylim(0, 92)
+    axis.set_ylabel("Selected examples")
+    axis.set_title("Call outcomes at the frozen 20% budget (80 calls)", pad=30)
+    style_axis(axis)
+    axis.legend(
+        ncol=3,
+        frameon=False,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.13),
+    )
+    save(figure, path)
+
+
+def calibration_figure(
+    analysis: dict[str, Any],
+    target: str,
+    title: str,
+    path: Path,
+) -> None:
+    result = analysis["router_diagnostics"][target]
+    rows = result["reliability_bins"]
+    x = [row["mean_predicted_probability"] for row in rows]
+    y = [row["observed_frequency"] for row in rows]
+    sizes = [row["examples"] for row in rows]
+    figure, axis = plt.subplots(figsize=(5.2, 4.7), constrained_layout=True)
+    axis.plot([0, 1], [0, 1], color="#666666", linestyle="--", label="Ideal")
+    axis.plot(x, y, color="#0072B2", marker="o", linewidth=2.0, label="Observed")
+    axis.set_xlim(0, 1)
+    axis.set_ylim(0, 1)
+    axis.set_aspect("equal", adjustable="box")
+    axis.set_xlabel("Mean predicted probability")
+    axis.set_ylabel("Observed frequency")
+    if len(set(sizes)) == 1:
+        axis.set_title(f"{title}\n(n={sizes[0]} per bin)")
+    else:
+        axis.set_title(title)
+    axis.text(
+        0.02,
+        0.98,
+        f"Prevalence={result['prevalence']:.3f}\nBrier={result['brier_score']:.3f}",
+        transform=axis.transAxes,
+        va="top",
+        fontsize=8,
+    )
+    style_axis(axis)
+    axis.legend(frameon=False, loc="lower right")
+    save(figure, path)
+
+
+def main() -> None:
+    args = parse_args()
+    formal = read_json(
+        args.hf_root / "evaluation" / "router" / "formal_test_results.json"
+    )
+    analysis = read_json(args.output_dir / "final_statistics.json")
+    if analysis.get("reproduction_gate", {}).get("status") != "PASS":
+        raise ValueError("Refusing to create figures before a PASS reproduction gate.")
+    figure_dir = args.output_dir / "figures"
+    figure_dir.mkdir(parents=True, exist_ok=True)
+    accuracy_vs_budget(formal, figure_dir / "accuracy_vs_budget.pdf")
+    accuracy_vs_runtime(formal, figure_dir / "accuracy_vs_runtime.pdf")
+    call_outcomes(analysis, figure_dir / "call_outcomes_20pct.pdf")
+    calibration_figure(
+        analysis,
+        "beneficial_vs_rest",
+        "Beneficial-call calibration (5 quantile bins)",
+        figure_dir / "beneficial_calibration.pdf",
+    )
+    calibration_figure(
+        analysis,
+        "harmful_vs_rest",
+        "Harmful-call calibration (5 quantile bins)",
+        figure_dir / "harmful_calibration.pdf",
+    )
+    print(f"Figures written to: {figure_dir}")
+
+
+if __name__ == "__main__":
+    main()

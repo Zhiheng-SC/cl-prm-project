@@ -101,3 +101,27 @@ separate:
 
 The analysis code can be revised as needed while keeping the frozen-protocol
 guardrail above intact.
+
+## Implemented workflow
+
+Run the analysis from the repository root with the pinned analysis environment:
+
+```powershell
+uv python install 3.12
+uv venv --python 3.12 .venv
+uv pip install --python .venv\Scripts\python.exe -r requirements-analysis.txt
+$env:PYTHONPATH = "src"
+.venv\Scripts\python.exe experiments/formal/prm_router/analysis/analyze_test_statistics.py
+.venv\Scripts\python.exe experiments/formal/prm_router/analysis/make_final_tables.py
+.venv\Scripts\python.exe experiments/formal/prm_router/analysis/make_final_figures.py
+```
+
+The default artifact input is the sibling directory `../cl_finalproject_hg`.
+Override it with `--hf-root` when needed. Generated files are written under
+`outputs/prm_router/formal/analysis/`, which remains excluded from Git.
+
+`analyze_test_statistics.py` stops before all descriptive analyses unless its
+reproduction gate matches the frozen formal evaluator. Average Precision and
+trapezoidal PR-AUC are reported under distinct names. Router discrimination and
+calibration are additional descriptive diagnostics; the expected-gain versus
+failure-prediction overlap is explicitly labeled post-hoc descriptive analysis.

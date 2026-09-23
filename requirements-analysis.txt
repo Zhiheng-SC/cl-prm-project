@@ -1,0 +1,4 @@
+-r requirements-common.txt
+
+# Final held-out analysis and publication figures
+matplotlib==3.10.7
