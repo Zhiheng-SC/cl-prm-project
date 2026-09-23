@@ -10,6 +10,22 @@ points validate the configuration before running so that unsupported changes
 to grouping, features, budgets, runtime policy, or test locking cannot be
 silently ignored.
 
+## Status
+
+The frozen ReasonEval--PathFinder formal study has been completed, including a one-time evaluation on the 400-example held-out test split.
+
+Final primary results:
+
+- ReasonEval only: `0.7175`
+- PathFinder only: `0.7900`
+- Expected-gain routing at the primary 20% call budget: `0.8175`
+- Cost-aware routing at the primary 20% call budget: `0.8175`
+- Pairwise oracle: `0.9225`
+
+The commands below are retained as the reproducible execution record. The held-out test results must not be used for further feature, threshold, utility-weight, or primary-budget selection.
+
+The executed A100 workflow is preserved in `run_gpu_environment.ipynb`.
+
 ## Entry Points
 
 - `prepare_formal_splits.py`: reconstruct the pinned 600/200/400
@@ -21,6 +37,7 @@ silently ignored.
 - `evaluate_development.py`: fit train-only routers/runtime predictor and use
   validation only for the pre-specified utility-weight selection.
 - `evaluate_test.py`: evaluate the frozen protocol once on held-out test data.
+- `analysis/`: reserved for final descriptive statistics and visualization scripts. These analyses must not modify the frozen protocol.
 
 The verifier-specific ReasonEval, PathFinder, and GenPRM runners remain under
 `experiments/feasibility/prm_router/` because those implementations were
@@ -154,13 +171,14 @@ python experiments/formal/prm_router/evaluate_development.py \
   --train-pathfinder outputs/prm_router/formal/train/pathfinder.jsonl \
   --validation-reasoneval outputs/prm_router/formal/validation/reasoneval.jsonl \
   --validation-pathfinder outputs/prm_router/formal/validation/pathfinder.jsonl \
-  --reason-eval-threshold <SELECTED_THRESHOLD>
+  --reason-eval-threshold <SELECTED_THRESHOLD> \
+  --output outputs/prm_router/formal/pathfinder_development_selection.json
 ```
 
 This writes:
 
 ```text
-outputs/prm_router/formal/development_selection.json
+outputs/prm_router/formal/pathfinder_development_selection.json
 ```
 
 The development stage fits the train-only routing and runtime models and uses
@@ -175,8 +193,8 @@ hf upload cl-prm-team/cl-prm-artifacts \
   --repo-type dataset
 
 hf upload cl-prm-team/cl-prm-artifacts \
-  outputs/prm_router/formal/development_selection.json \
-  evaluation/router/development_selection.json \
+  outputs/prm_router/formal/pathfinder_development_selection.json \
+  evaluation/router/pathfinder_development_selection.json \
   --repo-type dataset
 ```
 
@@ -189,7 +207,6 @@ Before touching the held-out test split, record and freeze:
 - the pre-call feature set and cost feature set;
 - the primary 20% call budget and secondary budget curve;
 - the primary comparisons and bootstrap settings;
-- any secondary post-call arbitration rule that will be reported;
 - the common hardware/runtime protocol.
 
 Do not change the method in response to held-out test results.
@@ -234,6 +251,7 @@ python experiments/formal/prm_router/evaluate_test.py \
   --train-pathfinder outputs/prm_router/formal/train/pathfinder.jsonl \
   --test-reasoneval outputs/prm_router/formal/test/reasoneval.jsonl \
   --test-pathfinder outputs/prm_router/formal/test/pathfinder.jsonl \
+  --development-selection outputs/prm_router/formal/pathfinder_development_selection.json \
   --confirm-protocol-frozen
 ```
 
