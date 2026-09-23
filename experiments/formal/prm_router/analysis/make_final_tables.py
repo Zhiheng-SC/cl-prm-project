@@ -10,7 +10,7 @@ from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_HF_ROOT = REPO_ROOT.parent / "cl_finalproject_hg"
+DEFAULT_HF_ROOT = REPO_ROOT.parent / "cl-prm-artifacts"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "outputs" / "prm_router" / "formal" / "analysis"
 
 METHOD_LABELS = {
