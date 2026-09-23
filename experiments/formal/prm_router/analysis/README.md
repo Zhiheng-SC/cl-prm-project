@@ -116,7 +116,7 @@ $env:PYTHONPATH = "src"
 .venv\Scripts\python.exe experiments/formal/prm_router/analysis/make_final_figures.py
 ```
 
-The current scripts default to the local sibling path `../cl_finalproject_hg`, which is only a convenience used for the completed analysis run. The artifact repository may be cloned anywhere; pass its path explicitly with `--hf-root` on other machines. Generated files are written under `outputs/prm_router/formal/analysis/`, which remains excluded from Git.
+By default, the scripts look for a sibling clone named `../cl-prm-artifacts`, matching the shared Hugging Face repository name. The artifact repository may be cloned anywhere; pass its path explicitly with `--hf-root` when using a different location. Generated files are written under `outputs/prm_router/formal/analysis/`, which remains excluded from Git.
 
 `analyze_test_statistics.py` stops before all descriptive analyses unless its
 reproduction gate matches the frozen formal evaluator. Average Precision and
