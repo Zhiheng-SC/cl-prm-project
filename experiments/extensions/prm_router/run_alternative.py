@@ -178,6 +178,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--warmup-examples", type=int, default=3)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--allow-generated-code", action="store_true")
     parser.add_argument("--genprm-src", type=Path, default=REPO_ROOT.parent / "GenPRM/src")
@@ -199,6 +200,10 @@ def main() -> None:
         if args.limit < 1:
             raise ValueError("--limit must be positive.")
         rows = rows[:args.limit]
+    if args.warmup_examples < 0:
+        raise ValueError("--warmup-examples cannot be negative.")
+    if args.verifier == "genprm_official" and not args.allow_generated_code:
+        raise ValueError("Official GenPRM executes generated Python; pass --allow-generated-code in an isolated environment.")
     max_input_tokens = int(spec["max_input_tokens"])
     max_tokens = int(spec.get("max_tokens", 0))
     threshold = float(spec["threshold"])
@@ -214,6 +219,7 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     parameters = {**expected, "upstream_commit": spec.get("upstream_commit"),
                   "tensor_parallel_size": args.tensor_parallel_size if args.verifier == "genprm_official" else None,
+                  "warmup_examples": args.warmup_examples,
                   "code_execution": args.verifier == "genprm_official"}
     metadata_path = initialize_run_metadata(
         script_path=Path(__file__), repo_root=REPO_ROOT, input_path=args.input,
@@ -223,6 +229,9 @@ def main() -> None:
     )
     if state.completed < len(rows):
         model, helper, _ = load_verifier(args.verifier, config, args)
+        for row in rows[:min(args.warmup_examples, len(rows))]:
+            score_one(args.verifier, model, helper, row, max_input_tokens, max_tokens)
+        torch.cuda.synchronize()
         with args.output.open(state.file_mode, encoding="utf-8") as out:
             for index, row in enumerate(rows[state.completed:], state.completed + 1):
                 torch.cuda.synchronize()
