@@ -31,7 +31,6 @@ See:
 - [Formal PRM Router runbook](experiments/formal/prm_router/README.md)
 - [PRM Router feasibility study](experiments/feasibility/prm_router/README.md)
 - [Expanded 200-example feasibility results](docs/results/prm_router_expanded_feasibility_200.md)
-- [AI-assisted development disclosure](AI_ASSISTANCE.md)
 
 ## Project Resources
 
@@ -77,7 +76,6 @@ cl-prm-project/
 │   └── cl_prm/                 # Shared data, routing, evaluation, and IO modules
 ├── data/                       # Generated local datasets, excluded from Git
 ├── outputs/                    # Generated local artifacts, excluded from Git
-├── AI_ASSISTANCE.md            # AI-assisted implementation disclosure
 ├── pyproject.toml              # Editable src-package configuration
 ├── requirements-common.txt     # Shared Python dependencies
 ├── requirements.txt            # Local/workstation dependency entry point
