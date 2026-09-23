@@ -2,13 +2,17 @@
 
 ## Status
 
-**Selected primary project direction. Expanded feasibility has passed; formal held-out evaluation has not yet started.**
+**Selected primary project direction. The formal ReasonEval--PathFinder held-out evaluation is complete.**
 
-The recommended primary system is:
+The frozen primary system is:
 
-`ReasonEval -> utility router -> PathFinder -> optional risk-controlled arbitration`
+`ReasonEval -> utility router -> optional PathFinder`
 
-GenPRM is retained as an alternative second-stage comparison baseline.
+The formal study used grouped 600/200/400 train/validation/test splits and a pre-specified 20% primary PathFinder call budget. Validation selected the exact ReasonEval threshold and the cost-aware utility weights before the held-out test was opened.
+
+Held-out accuracy on 400 test examples is 0.7175 for ReasonEval-only, 0.7900 for PathFinder-only, and 0.8175 for both expected-gain and cost-aware routing at the 20% call budget. The pairwise oracle is 0.9225.
+
+Post-call arbitration was explored during feasibility but is not part of the primary held-out result. GenPRM remains an optional post-primary verifier-pair extension.
 
 ## Research Question
 
@@ -491,38 +495,40 @@ Mitigation:
 * describe GenPRM as an alternative baseline;
 * avoid making conclusions about the full official GenPRM system unless it is reproduced.
 
-## Current Pre-Run Checklist
+## Current Finalization Status
 
-There are no remaining technical blockers for the primary formal implementation. The formal configuration, grouped split manifest, guarded inference runner, train/validation selector, held-out evaluator, resumable metadata path, and private shared artifact repository are in place.
+The primary formal experiment is complete and the held-out protocol is closed to further tuning.
 
-Before formal development inference begins, the remaining coordination and preflight items are:
+Completed milestones include:
 
-1. confirm the common GPU/environment for all primary ReasonEval and PathFinder runtime measurements;
-2. assign team responsibilities for inference, router evaluation/statistics, interpretation, and report integration;
-3. reconstruct the formal splits and run the guarded plan-only preflight on the selected cloud environment;
-4. verify that generated artifacts will be archived under `cl-prm-team/cl-prm-artifacts` after completion and hash checks.
+1. deterministic grouped 600/200/400 formal splits;
+2. same-environment ReasonEval and PathFinder inference;
+3. validation-only ReasonEval threshold selection;
+4. validation-only cost-aware utility selection;
+5. protocol freeze before test access;
+6. one-time held-out evaluation on 400 examples;
+7. grouped-bootstrap primary comparisons;
+8. archival of formal artifacts in `cl-prm-team/cl-prm-artifacts`;
+9. preservation of the executed A100 workflow in the formal run notebook.
 
-The 100- and 200-example feasibility studies are frozen and should not be modified further. The next experimental milestone is the complete 600-train + 200-validation ReasonEval/PathFinder run.
+Remaining project work is descriptive analysis, visualization, reproducibility cleanup, and final report writing. Optional GenPRM work must remain separate from the completed primary result and must not trigger retuning of the ReasonEval--PathFinder protocol.
 
 ## Decision
 
-**Selected as the primary project direction for formal evaluation.**
+**ReasonEval--PathFinder selective verification is the completed primary project direction.**
 
-The completed feasibility study provides evidence that:
+The held-out study confirms that:
 
-* ReasonEval and PathFinder make complementary errors;
-* beneficial and harmful replacements both occur;
-* lightweight grouped out-of-fold routers can predict part of this correction utility;
-* confidence-based routing does not fully capture the available routing signal;
-* PathFinder post-call signals may help identify unsafe replacements.
+* ReasonEval and PathFinder retain substantial complementary error structure;
+* beneficial and harmful replacements both occur on unseen data;
+* selective expected-gain routing improves over ReasonEval-only and uncertainty routing at the pre-specified 20% budget;
+* the 20% selective cascade also exceeds the PathFinder-only point estimate while using PathFinder on only one fifth of examples;
+* base-verifier failure prediction is a strong learned baseline, so the incremental advantage of pair-specific expected gain over that baseline should be interpreted cautiously;
+* cost-aware routing is most useful as a secondary accuracy--runtime analysis rather than as a separate primary accuracy win.
 
-The formal project will therefore focus on pair-specific, cost-aware utility routing between ReasonEval and PathFinder, with risk-controlled post-call arbitration as a secondary component.
+No further feature, threshold, utility-weight, or primary-budget selection will use the held-out test set.
 
-GenPRM will remain an alternative verifier baseline rather than the central system.
-
-The pilot results establish technical feasibility but do not establish held-out generalization, statistical significance, or a final accuracy-compute advantage. These claims depend on the formal grouped train, validation, and test evaluation.
-
-The next milestone is complete formal train-and-validation inference on the common hardware, followed by validation-only threshold and utility selection. The held-out test remains locked until all validation-selected choices and the final analysis plan are frozen.
+GenPRM remains an optional post-primary extension. Preliminary simplified GenPRM runs are not treated as final results unless a corrected extension protocol is frozen and evaluated separately.
 
 ## Relevant Resources
 

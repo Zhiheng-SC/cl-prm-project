@@ -25,8 +25,9 @@ outputs/prm_router/
 │   │   ├── pathfinder.jsonl
 │   │   ├── pathfinder.metadata.json
 │   │   └── formal_test_results.json
-│   └── development_selection.json
-└── robustness/                # Diagnostic analyses
+│   ├── pathfinder_development_selection.json
+│   └── analysis/              # Final descriptive statistics / figures
+└── robustness/                # Feasibility / pre-formal diagnostics
 ```
 
 Formal verifier outputs should be generated once, cached, and reused for lightweight router experiments.
@@ -52,11 +53,9 @@ formal/
 evaluation/
 └── router/
     ├── reasoneval_threshold.json
-    └── development_selection.json
+    ├── pathfinder_development_selection.json
+    └── formal_test_results.json
 ```
 
-Upload train and validation artifacts after each completed development run and
-hash verification. Upload held-out test artifacts only after the protocol has
-been frozen and test inference has been explicitly unlocked. The operational
-commands are documented in `experiments/formal/prm_router/README.md`.
+The completed ReasonEval--PathFinder development and held-out artifacts are archived in the shared Hugging Face repository. Any final analysis outputs should be generated from the frozen artifacts without changing the protocol. The operational commands are documented in `experiments/formal/prm_router/README.md`.
 
