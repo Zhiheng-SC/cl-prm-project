@@ -103,11 +103,13 @@ python experiments/extensions/prm_router/evaluate_development.py \
   --model math_prm \
   --train-reasoneval outputs/prm_router/formal/train/reasoneval.jsonl \
   --validation-reasoneval outputs/prm_router/formal/validation/reasoneval.jsonl \
-  --reason-eval-threshold 0.5
+  --reason-eval-threshold 0.9469655402936041
 ```
 
-Replace `math_prm` with `skywork_prm` or `genprm_official` for other runs and
-pass the actual frozen RE threshold if different from 0.5. Review MAE against
+Replace `math_prm` with `skywork_prm` or `genprm_official` for other runs.
+The threshold shown above is the value printed by Mario's executed notebook;
+verify it against `formal/validation/reasoneval_threshold.json` if that artifact
+is regenerated. Review MAE against
 the median-runtime baseline and R²; if the cost model is weak, report the
 gain-only (`mu=0`) and selected routing accuracies and measured times without
 claiming precise per-example cost prediction.
