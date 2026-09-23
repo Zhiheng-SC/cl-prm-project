@@ -19,7 +19,7 @@ This preliminary study confirms that:
 5. Post-call trust arbitration can detect many harmful replacements.
 6. Random and uncertainty routing leave substantial room for improvement.
 
-These results support the selected direction but are exploratory and must not be interpreted as final held-out benchmark results. No additional feasibility-scale GPU inference is required before the formal train/validation runs.
+These results support the selected direction but are exploratory and must not be interpreted as final held-out benchmark results. The formal ReasonEval--PathFinder study was subsequently completed under the frozen 600/200/400 protocol; see `experiments/formal/prm_router/README.md` for the final workflow and held-out results.
 
 ## Research Question
 
@@ -143,7 +143,7 @@ PathFinder structured verification
 Optional post-call trust arbitration
 ```
 
-GenPRM is retained as an alternative second-stage comparison baseline.
+GenPRM is retained as an optional post-primary second-stage extension.
 
 The second-stage replacement target is defined as:
 
