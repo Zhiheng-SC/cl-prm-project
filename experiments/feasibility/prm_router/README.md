@@ -586,16 +586,13 @@ start formal development inference. Test execution is separately locked and
 requires both a validation-selected ReasonEval threshold and
 `--confirm-test-protocol-frozen`.
 
-PRM Router has now been selected. The remaining formal workflow is maintained in
-`experiments/formal/prm_router/README.md`. In brief:
+The formal ReasonEval--PathFinder workflow described in
+`experiments/formal/prm_router/README.md` has now been completed through the
+one-time 400-example held-out evaluation. This feasibility directory is retained
+as the historical exploratory stage and should not be used to redefine the
+frozen primary protocol.
 
-1. run ReasonEval and PathFinder on the 600-train + 200-validation development splits using the same GPU;
-2. select the ReasonEval threshold and pre-specified utility weights using validation only;
-3. freeze the routing protocol and final analysis plan;
-4. unlock and evaluate once on the 400-example held-out test split;
-5. report the pre-specified accuracy-budget, runtime, bootstrap, and diagnostic analyses.
-
-GenPRM and ProcessBench remain optional extensions after the primary ReasonEval-PathFinder study.
+GenPRM and ProcessBench remain optional post-primary extensions.
 
 
 ## Relevant Resources
@@ -615,7 +612,7 @@ GenPRM and ProcessBench remain optional extensions after the primary ReasonEval-
 
 The current experiment demonstrates verifier complementarity, measurable routing benefit, and a substantial gap between heuristic and learned routing. The direction is technically feasible and empirically promising.
 
-The reported values remain exploratory. The direction has been selected; the next decisive evidence comes from the frozen formal train/validation/test workflow documented under `experiments/formal/prm_router/`.
+The reported values in this document remain exploratory. Final primary claims come from the completed frozen formal train/validation/test workflow documented under `experiments/formal/prm_router/`.
 
 
 ## Pre-formal CPU ablation
