@@ -1,0 +1,30 @@
+{
+  "scope": "exploratory_second_stage_extensions",
+  "base": "ReasonEval",
+  "formal_config": "configs/experiments/prm_router_formal.json",
+  "split_manifest": "configs/experiments/prm_router_formal_split_manifest.json",
+  "primary_call_budget": 0.2,
+  "models": {
+    "genprm_official": {
+      "name": "GenPRM/GenPRM-7B",
+      "revision": "0ea3fa755896b5448a33458fd0b010501dbea21e",
+      "upstream_commit": "a08da3f6b636be370e0d53f9bdbdc455cdece939",
+      "threshold": 0.5,
+      "max_input_tokens": 4096,
+      "max_tokens": 2048
+    },
+    "math_prm": {
+      "name": "Qwen/Qwen2.5-Math-PRM-7B",
+      "revision": "0610740060112df12585d00a1c5f4624d2f59051",
+      "threshold": 0.5,
+      "max_input_tokens": 4096
+    },
+    "skywork_prm": {
+      "name": "Skywork/Skywork-o1-Open-PRM-Qwen-2.5-7B",
+      "revision": "b35cda251253e26919a9c9498ac5fe0f407d9718",
+      "upstream_commit": "719b56b17447405e0f10e6c0360a581cf4ffa9c1",
+      "threshold": 0.5,
+      "max_input_tokens": 4096
+    }
+  }
+}
