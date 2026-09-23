@@ -95,6 +95,8 @@ the project package in editable mode with `python -m pip install -e . --no-deps 
 
 The completed formal run was executed on an NVIDIA A100-SXM4-80GB with the pinned software stack recorded in `experiments/formal/prm_router/run_gpu_environment.ipynb`. The notebook preserves the executed development and held-out workflow.
 
+The optional [alternative PRM extension](experiments/extensions/prm_router/README.md) has independent official GenPRM, Qwen Math PRM, and Skywork PRM runners. It reuses the frozen splits and RE outputs while leaving the completed RE -> PathFinder notebook and formal results intact.
+
 For compatible cloud environments, `bash scripts/bootstrap_runpod.sh` remains the environment bootstrap entry point; see [RunPod environment](docs/runpod.md) for the pinned stack and storage/secrets policy.
 
 ## Data and Outputs
