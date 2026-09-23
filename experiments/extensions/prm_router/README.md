@@ -88,7 +88,8 @@ never under `outputs/prm_router/formal/`. Each has a JSON metadata sidecar;
 parameters, and environment. The score threshold of 0.5 is a starting point,
 not a calibration claim. No model generates tokens except GenPRM; its official
 API does not return total generation usage, so this runner records null for
-that field and measures wall-clock time instead. It does not silently truncate
+that field and measures wall-clock time instead. Three initial calls warm up
+each loaded model before timed records. It does not silently truncate
 overlong inputs.
 
 ## Train and validation analysis
