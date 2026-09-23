@@ -54,8 +54,9 @@ evaluation/
 └── router/
     ├── reasoneval_threshold.json
     ├── pathfinder_development_selection.json
-    └── formal_test_results.json
+    ├── formal_test_results.json
+    └── final_analysis/          # Generated final statistics, tables, and figures
 ```
 
-The completed ReasonEval--PathFinder development and held-out artifacts are archived in the shared Hugging Face repository. Any final analysis outputs should be generated from the frozen artifacts without changing the protocol. The operational commands are documented in `experiments/formal/prm_router/README.md`.
+The completed ReasonEval--PathFinder development and held-out artifacts are archived in the shared Hugging Face repository. Final descriptive analysis outputs should be archived under `evaluation/router/final_analysis/` and generated from the frozen artifacts without changing the protocol. The operational commands are documented in `experiments/formal/prm_router/README.md` and `experiments/formal/prm_router/analysis/README.md`.
 
