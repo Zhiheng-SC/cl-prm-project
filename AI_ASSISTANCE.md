@@ -1,14 +1,16 @@
 # AI-Assisted Development
 
-AI coding assistants were used extensively in the software implementation of this project. A substantial portion of the repository code was initially drafted, revised, refactored, debugged, or documented with AI assistance.
+AI coding assistants were used frequently during the implementation of this project, especially for drafting or revising parts of scripts, debugging, refactoring, writing tests and utilities, and improving documentation.
 
-The team remained responsible for the research direction, experimental design, verifier and baseline selection, routing formulation, formal train/validation/test protocol, model execution, protocol freezing, validation of generated code, evaluation, and scientific interpretation.
+The repository is not entirely AI-generated. Team members also wrote and modified code directly, integrated components, performed substantial debugging, ran the experiments, inspected failures and intermediate outputs, and revised implementations when the generated or existing code did not behave as intended.
 
-AI-assisted code was not accepted without review. The team executed the resulting pipelines, inspected intermediate and final artifacts, investigated failures, validated the frozen formal protocol, and checked reported results against the generated experiment outputs.
+The team remained responsible for the research direction, experimental design, verifier and baseline selection, routing formulation, formal train/validation/test protocol, model execution, protocol freezing, evaluation choices, validation of the resulting code, and scientific interpretation.
 
-## Main AI-assisted components
+AI-assisted code was reviewed in the context of the actual experiments rather than accepted automatically. The team executed the pipelines, checked intermediate and final artifacts, investigated errors, verified the frozen formal protocol, and compared reported results against the generated experiment outputs.
 
-The main AI-assisted implementation areas include:
+## Main areas of AI assistance
+
+AI assistance was used to varying degrees across several implementation areas, including:
 
 - formal split construction and protocol-validation utilities;
 - ReasonEval, PathFinder, and GenPRM inference wrappers;
@@ -28,11 +30,11 @@ Representative scripts and modules include:
 - `experiments/feasibility/prm_router/run_genprm.py`
 - shared routing/evaluation utilities under `src/cl_prm/`
 
-This list is representative rather than exhaustive: unless otherwise stated, most newly developed Python code in the PRM-routing pipeline involved some level of AI-assisted implementation.
+This list is representative rather than exhaustive. The amount and type of AI assistance differ across files: some code was drafted with AI support, some was manually written and later revised or debugged with AI assistance, and some was primarily written or modified by team members.
 
-## Human responsibility
+## Human contribution and verification
 
-The team independently determined and/or verified:
+The team independently determined and/or carried out:
 
 - the project research questions and scope;
 - the ReasonEval -> router -> optional PathFinder primary design;
@@ -41,7 +43,9 @@ The team independently determined and/or verified:
 - the pre-call feature set and primary 20% call budget;
 - the validation-only threshold and utility-selection procedure;
 - the held-out test lock and one-time evaluation procedure;
+- implementation integration and substantial manual debugging;
 - the actual GPU runs and artifact handling;
+- inspection and validation of generated outputs;
 - interpretation of the held-out results and final scientific claims.
 
-All final code and report claims remain the responsibility of the team.
+All final code, experiments, and report claims remain the responsibility of the team.

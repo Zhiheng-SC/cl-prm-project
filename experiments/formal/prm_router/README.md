@@ -37,7 +37,7 @@ The executed A100 workflow is preserved in `run_gpu_environment.ipynb`.
 - `evaluate_development.py`: fit train-only routers/runtime predictor and use
   validation only for the pre-specified utility-weight selection.
 - `evaluate_test.py`: evaluate the frozen protocol once on held-out test data.
-- `analysis/`: reserved for final descriptive statistics and visualization scripts. These analyses must not modify the frozen protocol.
+- `analysis/`: reserved for final descriptive statistics and visualization scripts. See `analysis/README.md` for suggested directions and the frozen-protocol guardrail.
 
 The verifier-specific ReasonEval, PathFinder, and GenPRM runners remain under
 `experiments/feasibility/prm_router/` because those implementations were
