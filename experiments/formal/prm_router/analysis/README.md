@@ -116,12 +116,27 @@ $env:PYTHONPATH = "src"
 .venv\Scripts\python.exe experiments/formal/prm_router/analysis/make_final_figures.py
 ```
 
-The default artifact input is the sibling directory `../cl_finalproject_hg`.
-Override it with `--hf-root` when needed. Generated files are written under
-`outputs/prm_router/formal/analysis/`, which remains excluded from Git.
+The current scripts default to the local sibling path `../cl_finalproject_hg`, which is only a convenience used for the completed analysis run. The artifact repository may be cloned anywhere; pass its path explicitly with `--hf-root` on other machines. Generated files are written under `outputs/prm_router/formal/analysis/`, which remains excluded from Git.
 
 `analyze_test_statistics.py` stops before all descriptive analyses unless its
 reproduction gate matches the frozen formal evaluator. Average Precision and
-trapezoidal PR-AUC are reported under distinct names. Router discrimination and
-calibration are additional descriptive diagnostics; the expected-gain versus
-failure-prediction overlap is explicitly labeled post-hoc descriptive analysis.
+trapezoidal PR-AUC are reported under distinct names. Router discrimination and held-out calibration are additional descriptive diagnostics only; they are not used to recalibrate the router or alter the frozen routing policy. The expected-gain versus failure-prediction overlap is explicitly labeled post-hoc descriptive analysis.
+
+
+## Archiving generated analysis artifacts
+
+After a successful run and a PASS reproduction gate, archive the generated
+analysis outputs in the shared artifact repository rather than committing them
+to Git:
+
+```bash
+hf upload cl-prm-team/cl-prm-artifacts \
+  outputs/prm_router/formal/analysis \
+  evaluation/router/final_analysis \
+  --repo-type dataset
+```
+
+This keeps GitHub focused on reproducible source code while the generated
+tables, statistics, and figures remain versioned with the experiment artifacts.
+Only figures actually used in the final report need to be copied separately
+into the Overleaf writing workspace.
