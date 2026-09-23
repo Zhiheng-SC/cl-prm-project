@@ -4,30 +4,34 @@ This repository contains code, documentation, and experiments for a course proje
 
 ## Project Status
 
-The PRM Router feasibility study is complete and has passed the feasibility check. The recommended primary system is:
+The primary ReasonEval -> PathFinder selective-verification study is complete.
 
-`ReasonEval -> utility router -> PathFinder -> optional risk-controlled arbitration`
+The frozen primary system is:
 
-GenPRM is retained as an alternative second-stage comparison baseline.
+`ReasonEval -> utility router -> optional PathFinder`
 
-The PRM Router has been selected as the primary project direction. Formal held-out evaluation has not started. Preparation for that evaluation is complete:
+The formal experiment used original-question-grouped 600/200/400 train, validation, and held-out test splits. Thresholds and routing hyperparameters were selected using development data before the test set was opened.
 
-- dataset and model revisions are pinned;
-- the 100-example feasibility pilot is excluded from formal data;
-- deterministic grouped train, validation, and test splits are defined;
-- a tracked manifest records dataset provenance, split statistics, and SHA256 hashes.
+Held-out results on 400 test examples:
 
-The original 100-example pilot has now been confirmed by a 200-example
-expanded feasibility study with five grouped-CV seeds. The reported
-feasibility results remain exploratory and are not final held-out benchmark
-results.
+| System | Accuracy |
+|---|---:|
+| ReasonEval only | 71.75% |
+| PathFinder only | 79.00% |
+| Expected-gain routing @ 20% PathFinder calls | 81.75% |
+| Cost-aware routing @ 20% PathFinder calls | 81.75% |
+
+The pairwise ReasonEval--PathFinder oracle reaches 92.25%. The primary protocol is now frozen and closed to further test-based tuning. Current work focuses on final descriptive diagnostics, visualization, reproducibility checks, and report writing.
+
+GenPRM remains an optional post-primary verifier-pair extension and does not affect the completed ReasonEval--PathFinder primary result.
 
 See:
 
-- [PRM Router proposal](docs/proposals/prm_router.md)
+- [PRM Router proposal and protocol history](docs/proposals/prm_router.md)
 - [Formal PRM Router runbook](experiments/formal/prm_router/README.md)
 - [PRM Router feasibility study](experiments/feasibility/prm_router/README.md)
 - [Expanded 200-example feasibility results](docs/results/prm_router_expanded_feasibility_200.md)
+- [AI-assisted development disclosure](AI_ASSISTANCE.md)
 
 ## Project Resources
 
@@ -35,27 +39,30 @@ See:
 - **Generated experiment artifacts:** [`cl-prm-team/cl-prm-artifacts`](https://huggingface.co/datasets/cl-prm-team/cl-prm-artifacts) (private during development).
 - **Internal writing workspace:** shared Overleaf project (team access only; no editable share link is stored in Git).
 
-## Primary Candidate
+## Primary Study
 
-The PRM Router project studies whether pair-specific correction utility can allocate limited verification compute more effectively than confidence-based escalation.
+The project asks whether pair-specific correction utility can allocate limited process-verification compute more effectively than confidence- or difficulty-based escalation.
 
-The completed feasibility study includes:
+The final primary study combines:
 
-- balanced PRMBench subset preparation;
-- ReasonEval, GenPRM, and PathFinder inference;
-- verifier complementarity analysis;
-- random and uncertainty-routing baselines;
-- grouped out-of-fold benefit and expected-gain routers;
-- DisPRM threshold sensitivity and grouped leakage checks;
-- post-call trust arbitration;
-- explicit pilot limitations and a held-out evaluation plan.
+- ReasonEval as the first-stage verifier;
+- a lightweight pre-call utility router;
+- PathFinder-PRM as the optional second-stage verifier;
+- beneficial / neutral / harmful replacement targets;
+- expected-gain and cost-aware routing;
+- random, low-score, uncertainty, failure-prediction, and benefit-only baselines;
+- grouped bootstrap confidence intervals;
+- held-out call-budget and same-hardware runtime comparisons.
+
+Post-call arbitration was explored during feasibility but is not part of the primary held-out result.
 
 ## Alternative / Archived Directions
 
-OVM completed a separate feasibility study and is retained as an archived alternative direction. Its compact evaluation summaries remain in GitHub, while raw generated seed outputs are stored in the team's private Hugging Face artifact repository. StepBADGE remains an unselected proposal only.
+OVM completed a separate feasibility study and is retained as an archived alternative direction. Its compact evaluation summaries remain in GitHub, while raw generated seed outputs are stored in the team's private Hugging Face artifact repository.
 
 - [OVM feasibility record](docs/proposals/ovm.md)
-- [StepBADGE proposal](docs/proposals/stepbadge.md)
+
+GenPRM is retained as an optional post-primary extension. Preliminary simplified GenPRM development runs are not treated as final held-out results.
 
 ## Repository Structure
 
@@ -65,11 +72,12 @@ cl-prm-project/
 ├── docs/                       # Proposals, literature notes, and meeting notes
 ├── experiments/
 │   ├── feasibility/            # Completed exploratory/feasibility workflows
-│   └── formal/prm_router/      # Guarded formal train/validation/test entry points
+│   └── formal/prm_router/      # Frozen formal workflow + reserved final-analysis area
 ├── src/
 │   └── cl_prm/                 # Shared data, routing, evaluation, and IO modules
 ├── data/                       # Generated local datasets, excluded from Git
 ├── outputs/                    # Generated local artifacts, excluded from Git
+├── AI_ASSISTANCE.md            # AI-assisted implementation disclosure
 ├── pyproject.toml              # Editable src-package configuration
 ├── requirements-common.txt     # Shared Python dependencies
 ├── requirements.txt            # Local/workstation dependency entry point
@@ -87,18 +95,9 @@ For the local Windows environment, install the PyTorch build appropriate
 for the target CUDA version before installing `requirements.txt`, then install
 the project package in editable mode with `python -m pip install -e . --no-deps --no-build-isolation`.
 
-The verified RunPod image already provides a compatible PyTorch,
-CUDA, and FlashAttention binary stack. Do not replace that stack with the
-local requirements file. Use:
+The completed formal run was executed on an NVIDIA A100-SXM4-80GB with the pinned software stack recorded in `experiments/formal/prm_router/run_gpu_environment.ipynb`. The notebook preserves the executed development and held-out workflow.
 
-```bash
-bash scripts/bootstrap_runpod.sh
-```
-
-See [RunPod environment](docs/runpod.md) for the verified versions, secrets,
-storage policy, data reconstruction, and startup workflow.
-
-The formal experiment must record the exact Python, PyTorch, Transformers, CUDA, attention-backend, and GPU versions used for inference.
+For compatible cloud environments, `bash scripts/bootstrap_runpod.sh` remains the environment bootstrap entry point; see [RunPod environment](docs/runpod.md) for the pinned stack and storage/secrets policy.
 
 ## Data and Outputs
 
