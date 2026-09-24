@@ -236,3 +236,5 @@ Thumbs.db
 
 # Locally downloaded shared artifacts
 hf_artifacts/
+
+/catboost_info/
