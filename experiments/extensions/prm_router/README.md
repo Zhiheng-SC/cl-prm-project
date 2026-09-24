@@ -148,6 +148,8 @@ For a deployed prefill router, the probe's extra full-model forward pass must
 also be included in total routing cost for every candidate; compare its
 net time against a no-probe baseline. The current script tests whether the
 representation carries predictive information; it is not an online router.
+It cannot reuse its Transformers attention cache inside the separate official
+vLLM process, so selected candidates still pay for GenPRM's normal prefill.
 
 ## Train and validation analysis
 
