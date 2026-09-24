@@ -101,6 +101,8 @@ def main() -> None:
         torch.cuda.synchronize()
         elapsed = time.perf_counter() - start
         vector = result.hidden_states[-1][0, -1, :].float().cpu().numpy().copy()
+        if not np.isfinite(vector).all():
+            raise ValueError(f"Non-finite prefill vector for {row['example_id']}.")
         return vector, token_count, elapsed, hashlib.sha256(prompt.encode("utf-8")).hexdigest()
 
     # Warm up the forward path, excluding compilation and first-call effects from timings.
