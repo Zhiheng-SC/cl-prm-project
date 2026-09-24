@@ -71,6 +71,18 @@ python experiments/extensions/prm_router/run_extensions.py \
   --allow-generated-code --execute
 ```
 
+If Mario has not started the official 600/200 run, ask him to pull `main`,
+run the five-example pilot above, then run these two commands in that same
+official environment. Keep the JSONL and metadata files for both splits;
+do not use the formal runner's older `--verifiers genprm` condition.
+
+```bash
+python experiments/extensions/prm_router/run_extensions.py \
+  --split train --models genprm_official --allow-generated-code --execute
+python experiments/extensions/prm_router/run_extensions.py \
+  --split validation --models genprm_official --allow-generated-code --execute
+```
+
 After the pilot, omit `--limit` and run **train and validation separately**.
 Use `--models math_prm skywork_prm` in one plan if both environments are ready;
 the script launches a fresh process for each. For example:
@@ -91,6 +103,53 @@ API does not return total generation usage, so this runner records null for
 that field and measures wall-clock time instead. Three initial calls warm up
 each loaded model before timed records. It does not silently truncate
 overlong inputs.
+
+## Optional GenPRM prefill probe
+
+**Prefill is already part of every GenPRM generation call.** The model
+processes the input prompt and builds its attention cache before decoding
+output tokens. The official upstream vLLM runner even enables *chunked
+prefill*. Its current API returns the generated text and reward, however,
+not the intermediate hidden vectors from prefill. Stage 1 and later
+verification calls may each process a different prompt; `max_tokens=2048`
+is a generation limit, not a prefill length.
+
+The official 600/200 JSONL files supply the **target**
+(`extension_runtime_seconds`). A separate, optional probe in
+`extract_genprm_prefill.py` reconstructs the *first analysis request* using
+the pinned GenPRM prompt format and checkpoint, then runs a Transformers
+forward pass with **zero generated tokens**. It stores the final-layer hidden
+vector of the last input token, its prompt length, and a synchronized forward
+time. It does not change official scores, execute generated code, or require
+rerunning official inference. Its forward time is **not** the official vLLM
+prefill latency, so do not subtract it from `extension_runtime_seconds`.
+
+Use an A100 after the official GenPRM process exits. The official environment
+already contains Transformers and the pinned model; only one copy of the 7B
+checkpoint should be in GPU memory at a time. Run a small pilot first and
+confirm that its vectors are finite and the recorded prompt sizes fit the
+limit before processing the whole split:
+
+```bash
+source /opt/genprm-env/bin/activate
+python experiments/extensions/prm_router/extract_genprm_prefill.py \
+  --split validation --limit 5
+python experiments/extensions/prm_router/extract_genprm_prefill.py --split train
+python experiments/extensions/prm_router/extract_genprm_prefill.py --split validation
+```
+
+The probe writes `genprm_prefill_features.npz` (rows of hidden vectors),
+`genprm_prefill_index.jsonl` (row-to-`example_id` mapping), and a metadata
+file under `outputs/prm_router/extensions/prefill/{pilot|full}/{split}/`.
+Join features to official results by `example_id`, and check the full split
+SHA and pinned revision before fitting. Fit any dimensionality reduction
+and cost predictor **only on train groups**, then evaluate once on validation.
+For a deployed prefill router, the probe's extra full-model forward pass must
+also be included in total routing cost for every candidate; compare its
+net time against a no-probe baseline. The current script tests whether the
+representation carries predictive information; it is not an online router.
+It cannot reuse its Transformers attention cache inside the separate official
+vLLM process, so selected candidates still pay for GenPRM's normal prefill.
 
 ## Train and validation analysis
 
