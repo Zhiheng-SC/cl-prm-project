@@ -118,6 +118,51 @@ The main study's test labels/results have already been viewed. Treat any
 extension test as exploratory and disclose that status. `run_extensions.py`
 requires `--confirm-exploratory-test` for test execution.
 
+## Exploratory 256-token GenPRM cost analysis
+
+The four `*_256.py` and `genprm_cost_*.py` scripts in this directory analyze
+previously collected **GenPRM-7B Transformers analysis-only** results, with
+`max_analysis_tokens=256`. They are separate from the official vLLM GenPRM
+extension above. They do not load GenPRM, collect prefill activations, or run
+model inference; CPU is sufficient for the offline analyses. Run commands from
+the project root. The example `../cl-prm-artifacts` path is a sibling directory
+containing `formal/train/{genprm,reasoneval}.jsonl` and matching validation
+files; use `--artifacts-zip` instead when working from a downloaded artifact ZIP.
+
+- `genprm_cost_sweep.py`: compare fixed baseline and candidate cost models
+  using question-group CV on 600 train and diagnostics on 200 validation.
+- `genprm_cost_tune.py`: select a runtime regressor using train-only
+  question-group CV; writes `validation_predictions.jsonl`.
+- `genprm_cost_two_stage_256.py`: cross-fit a generated-token predictor,
+  then use **predicted**, rather than observed, tokens to estimate runtime.
+- `evaluate_genprm_cost_routing_256.py`: retrospectively apply predicted
+  runtime to the same validation examples at the fixed call budget. Its
+  `--predictions` input can be the direct or two-stage output.
+
+For example, with CatBoost installed (`python -m pip install catboost`):
+
+```bash
+python experiments/extensions/prm_router/genprm_cost_sweep.py --artifacts-dir ../cl-prm-artifacts --preset full --target runtime --re-threshold 0.9469655402936041 --output-dir outputs/prm_router/extensions/cost_sweep_256
+python experiments/extensions/prm_router/genprm_cost_tune.py --artifacts-dir ../cl-prm-artifacts --families rf histgb ridge_text catboost --output-dir outputs/prm_router/extensions/cost_tune_256/full
+python experiments/extensions/prm_router/genprm_cost_two_stage_256.py --artifacts-dir ../cl-prm-artifacts --direct-predictions outputs/prm_router/extensions/cost_tune_256/full/validation_predictions.jsonl --output-dir outputs/prm_router/extensions/cost_two_stage_256/full
+python experiments/extensions/prm_router/evaluate_genprm_cost_routing_256.py --artifacts-dir ../cl-prm-artifacts --predictions outputs/prm_router/extensions/cost_two_stage_256/full/validation_predictions.jsonl --model-columns two_stage selected mean ridge_re --re-threshold 0.9469655402936041 --output-dir outputs/prm_router/extensions/cost_routing_256/two_stage
+```
+
+Verify the RE threshold against the archived development selection before
+running the sweep or routing comparison. The tuning and two-stage scripts
+currently construct their RE-distance feature around `0.5`; the routing
+command above uses the selected RE decision threshold (approximately
+`0.947`). Do not describe those features as distance to the same threshold.
+
+All model selection stays within train question groups. Validation has already
+been examined repeatedly, so comparisons and `mu` sweeps here are
+**exploratory**; do not select a new method from these results and report it as
+an untouched validation result. These scripts do not read the 400-example test.
+The 256-token analysis cap and the separate judgement generation also mean
+their token and runtime targets do not directly represent official GenPRM with
+a 2048-token setting. Prediction errors alone do not account for the cost of
+prefilling every candidate in a future activation-based router.
+
 Official model usage references:
 
 - Qwen: https://huggingface.co/Qwen/Qwen2.5-Math-PRM-7B
