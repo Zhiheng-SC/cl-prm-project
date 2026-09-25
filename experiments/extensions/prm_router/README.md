@@ -187,6 +187,38 @@ The main study's test labels/results have already been viewed. Any extension tes
 
 - `run_extensions.py` requires `--confirm-exploratory-test` for test execution.
 
+## Post-hoc second-stage threshold sensitivity
+
+`analyze_threshold_sensitivity.py` performs the offline PF, MathPRM, and
+Skywork sensitivity analysis requested after the main test results were seen.
+It reads saved raw scores for the fixed 600/200/400 split and never reruns
+inference. ReasonEval retains the threshold archived in
+`evaluation/router/reasoneval_threshold.json`.
+
+For every second-stage verifier, the script scans the existing
+`candidate_thresholds` grid on validation and maximizes balanced accuracy.
+The deterministic tie-break is closest to 0.5, then the smaller threshold.
+PathFinder is re-thresholded only on `pathfinder_official_score`, which is the
+saved final gated score; its internal gates are not changed. The expected-gain
+router and Ridge cost model are refit on train separately for threshold 0.5
+and the validation-selected threshold. The existing 20% budget, lambda/mu
+grid, validation selection rule, and test evaluation definitions are reused.
+
+Run from the project checkout while the artifact checkout is available:
+
+```bash
+python experiments/extensions/prm_router/analyze_threshold_sensitivity.py \
+  --artifacts-dir ../cl_finalproject_hg
+```
+
+The script refuses to overwrite an existing run and only permits output under
+`extensions/threshold_sensitivity/`. It writes a combined comparison table, an
+original-configuration reproduction gate, and, for each verifier, the full
+threshold curve, selected-threshold record, standalone comparison, router
+comparison/details, and provenance metadata.
+These outputs are explicitly post-hoc and must not be presented as a
+pre-registered confirmatory experiment.
+
 ## Exploratory 256-token GenPRM cost analysis
 
 The four `*_256.py` and `genprm_cost_*.py` scripts in this directory analyze
