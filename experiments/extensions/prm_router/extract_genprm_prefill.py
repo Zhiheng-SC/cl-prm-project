@@ -42,10 +42,31 @@ def stage_one_prompt(messages: list[dict[str, str]], tokenizer: object, current_
     return prompt + f"<analyze>\nLet's analyze the Paragraph {current_step} step by step: "
 
 
+def spread_by_prompt_length(rows: list[dict], tokenizer: object, count: int) -> list[dict]:
+    """Choose deterministic prompt-token-length quantiles, keeping source order."""
+    if count > len(rows):
+        raise ValueError(f"--pilot-size {count} exceeds the {len(rows)} examples in the split.")
+    lengths = [
+        len(tokenizer.encode(stage_one_prompt(
+            messages_for_genprm(row), tokenizer, int(row["current_step"])
+        )))
+        for row in rows
+    ]
+    ranked = sorted(range(len(rows)), key=lambda index: (lengths[index], index))
+    ranks = (
+        [len(rows) // 2] if count == 1 else
+        [round(i * (len(rows) - 1) / (count - 1)) for i in range(count)]
+    )
+    selected = set(ranked[rank] for rank in ranks)
+    return [row for index, row in enumerate(rows) if index in selected]
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", choices=("train", "validation"), required=True)
-    parser.add_argument("--limit", type=int, help="Use a separate pilot output directory.")
+    pilot = parser.add_mutually_exclusive_group()
+    pilot.add_argument("--limit", type=int, help="Smoke test on the first N examples.")
+    pilot.add_argument("--pilot-size", type=int, help="Sample N examples spanning prompt lengths.")
     parser.add_argument("--output-dir", type=Path, default=OUTPUT)
     parser.add_argument("--genprm-src", type=Path, default=REPO_ROOT.parent / "GenPRM/src")
     parser.add_argument("--warmup-examples", type=int, default=3)
@@ -56,6 +77,8 @@ def main() -> None:
     args = parse_args()
     if args.limit is not None and args.limit < 1:
         raise ValueError("--limit must be positive.")
+    if args.pilot_size is not None and args.pilot_size < 1:
+        raise ValueError("--pilot-size must be positive.")
     if args.warmup_examples < 0:
         raise ValueError("--warmup-examples cannot be negative.")
     config = json.loads(CONFIG.read_text(encoding="utf-8"))["models"]["genprm_official"]
@@ -82,6 +105,9 @@ def main() -> None:
         raise RuntimeError("A CUDA GPU is required for the GenPRM prefill probe.")
     model_path = snapshot_download(repo_id=config["name"], revision=config["revision"])
     tokenizer = AutoTokenizer.from_pretrained(model_path)
+    if args.pilot_size is not None:
+        rows = spread_by_prompt_length(rows, tokenizer, args.pilot_size)
+        print(f"Selected {len(rows)} prompt-length-spread examples for the pilot.", flush=True)
     model = AutoModelForCausalLM.from_pretrained(
         model_path, torch_dtype=torch.bfloat16, device_map={"": 0},
         low_cpu_mem_usage=True,
@@ -124,7 +150,7 @@ def main() -> None:
         })
         print(f"{index + 1}/{len(rows)} prefill={elapsed:.3f}s tokens={token_count}", flush=True)
 
-    directory = args.output_dir / ("pilot" if args.limit else "full") / args.split
+    directory = args.output_dir / ("pilot" if args.limit or args.pilot_size else "full") / args.split
     directory.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(directory / "genprm_prefill_features.npz", hidden=np.stack(features))
     (directory / "genprm_prefill_index.jsonl").write_text(
@@ -135,6 +161,10 @@ def main() -> None:
         json.dumps({
             "split": args.split,
             "examples": len(rows),
+            "selection": (
+                "first_examples" if args.limit else
+                "prompt_length_spread" if args.pilot_size else "full_split"
+            ),
             "input_sha256": hashlib.sha256(input_path.read_bytes()).hexdigest(),
             "model": config["name"],
             "model_revision": config["revision"],
