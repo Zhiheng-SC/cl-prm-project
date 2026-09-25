@@ -18,6 +18,9 @@ In particular, do not rerun the notebook's formal split preparation or test
 cells just to add these models. Its HF uploads target `formal/`; use separate
 `extensions/` paths for any extension artifacts.
 
+`experiments/extensions/prm_router/run_gpu_environment-extension.ipynb` contains the executed cells for the RE -> Extensions development and runs.
+You can follow the cells and their outputs to see an extended run with keeping the original frozen split preparation, as well as RE hyperparameters
+
 Only one 7B checkpoint should be loaded per process. Use the same A100 for
 timing comparisons if possible; compare separate-environment runtimes with
 their hardware and dependency versions recorded in the metadata sidecars.
@@ -62,7 +65,7 @@ GPU environment without credentials or sensitive mounts. If running in Mario's
 Colab, the existing notebook's Python 3.12 environment is not the verified
 official GenPRM environment. Run this condition in its dedicated environment
 and record that hardware difference, or create an equivalent isolated A100
-environment first.
+environment first. If GenPRM direction is further explored, it will be using its own notebook with the same isolated environment as others
 
 ```bash
 source /opt/genprm-env/bin/activate
@@ -71,9 +74,7 @@ python experiments/extensions/prm_router/run_extensions.py \
   --allow-generated-code --execute
 ```
 
-If Mario has not started the official 600/200 run, ask him to pull `main`,
-run the five-example pilot above, then run these two commands in that same
-official environment. Keep the JSONL and metadata files for both splits;
+Keep the JSONL and metadata files for both splits;
 do not use the formal runner's older `--verifiers genprm` condition.
 
 ```bash
@@ -182,9 +183,9 @@ the median-runtime baseline and R²; if the cost model is weak, report the
 gain-only (`mu=0`) and selected routing accuracies and measured times without
 claiming precise per-example cost prediction.
 
-The main study's test labels/results have already been viewed. Treat any
-extension test as exploratory and disclose that status. `run_extensions.py`
-requires `--confirm-exploratory-test` for test execution.
+The main study's test labels/results have already been viewed. Any extension test should be treated as exploratory and its status clearly disclosed.
+
+- `run_extensions.py` requires `--confirm-exploratory-test` for test execution.
 
 ## Exploratory 256-token GenPRM cost analysis
 
