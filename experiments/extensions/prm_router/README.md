@@ -128,15 +128,24 @@ Use an A100 after the official GenPRM process exits. The official environment
 already contains Transformers and the pinned model; only one copy of the 7B
 checkpoint should be in GPU memory at a time. Run a small pilot first and
 confirm that its vectors are finite and the recorded prompt sizes fit the
-limit before processing the whole split:
+limit. `--limit 5` is available for a quick smoke check but simply takes the
+first five rows. For one pilot that also estimates full-run duration,
+`--pilot-size 20` selects examples spread across the split's actual tokenized
+prompt lengths. Run it on **train** before deciding whether to process both
+full splits:
 
 ```bash
 source /opt/genprm-env/bin/activate
 python experiments/extensions/prm_router/extract_genprm_prefill.py \
-  --split validation --limit 5
+  --split train --pilot-size 20
+# After checking the pilot's per-example times and memory use:
 python experiments/extensions/prm_router/extract_genprm_prefill.py --split train
 python experiments/extensions/prm_router/extract_genprm_prefill.py --split validation
 ```
+
+The pilot measures a Transformers forward pass, excluding checkpoint loading,
+tokenization, and output writing. Scale its total cautiously by the 600/200
+sample counts; prompt length alone does not capture all timing variation.
 
 The probe writes `genprm_prefill_features.npz` (rows of hidden vectors),
 `genprm_prefill_index.jsonl` (row-to-`example_id` mapping), and a metadata
