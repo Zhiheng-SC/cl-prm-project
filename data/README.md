@@ -12,10 +12,10 @@ the formal experiment:
 From the repository root:
 
 ```bash
-python experiments/feasibility/prm_router/prepare_subset.py \\
-  --n-correct 50 \\
-  --n-error 50 \\
-  --seed 2026 \\
+python experiments/feasibility/prm_router/prepare_subset.py \
+  --n-correct 50 \
+  --n-error 50 \
+  --seed 2026 \
   --output data/prm_router/feasibility_100.jsonl
 ```
 
