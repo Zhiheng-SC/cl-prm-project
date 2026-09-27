@@ -73,7 +73,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--artifacts-dir",
         type=Path,
-        default=REPO_ROOT.parent / "cl_finalproject_hg",
+        default=REPO_ROOT.parent / "cl-prm-artifacts",
         help="Local checkout of cl-prm-team/cl-prm-artifacts.",
     )
     parser.add_argument(
