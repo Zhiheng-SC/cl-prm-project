@@ -1,17 +1,17 @@
 # Formal Held-Out Analysis
 
-This directory is reserved for the final descriptive analysis and visualization
-of the frozen ReasonEval--PathFinder formal experiment.
+This directory contains the implemented descriptive statistics, tables, and figures
+for the frozen ReasonEval--PathFinder formal experiment.
 
 The primary protocol has already been frozen and evaluated on the 400-example
 held-out test split. Scripts added here should analyze the existing artifacts
 without changing the frozen model, features, threshold, utility weights, or
 primary call budget.
 
-## Suggested analysis directions
+## Analysis scope
 
-The following are useful directions for the final report. They are suggestions,
-not a required file structure, and can be reorganized as the analysis develops.
+The implemented workflow below generates the main comparisons and diagnostics.
+The following points describe what the reported analyses can be used to examine.
 
 ### Main result presentation
 
