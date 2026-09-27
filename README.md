@@ -40,7 +40,7 @@ See:
 
 ## Reproducing the Report
 
-The [formal runbook](experiments/formal/prm_router/README.md) reconstructs the pinned question-group splits, runs the frozen RE--PathFinder experiment, and checks its predictions against the tracked manifest. The [analysis runbook](experiments/formal/prm_router/analysis/README.md) generates the main tables and figures from archived outputs. The [extension runbook](experiments/extensions/prm_router/README.md) covers MathPRM, Skywork, and the post-hoc threshold sensitivity study. Download the [generated artifacts](https://huggingface.co/datasets/cl-prm-team/cl-prm-artifacts) beside this repository as `cl-prm-artifacts` when running offline analysis scripts; use their `--artifacts-dir` or `--hf-root` option if stored elsewhere. The course paper itself is maintained in the separate writing workspace.
+The [formal runbook](experiments/formal/prm_router/README.md) reconstructs the pinned question-group splits, runs the frozen RE--PathFinder experiment, and validates the reconstructed splits against the tracked manifest. The [analysis runbook](experiments/formal/prm_router/analysis/README.md) generates the main tables and figures from archived outputs. The [extension runbook](experiments/extensions/prm_router/README.md) covers MathPRM, Skywork, and the post-hoc threshold sensitivity study. Download the [generated artifacts](https://huggingface.co/datasets/cl-prm-team/cl-prm-artifacts) beside this repository as `cl-prm-artifacts` when running offline analysis scripts; use their `--artifacts-dir` or `--hf-root` option if stored elsewhere. The course paper itself is maintained in the separate writing workspace.
 
 ## Primary Study
 
