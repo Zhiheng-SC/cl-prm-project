@@ -154,7 +154,7 @@ def draw_figure(rows: list[dict[str, float]], sensitivity_root: Path,
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--artifacts-dir", type=Path, default=REPO_ROOT.parent / "cl_finalproject_hg")
+    parser.add_argument("--artifacts-dir", type=Path, default=REPO_ROOT.parent / "cl-prm-artifacts")
     parser.add_argument("--output-dir", type=Path, help="Defaults to <artifacts>/extensions/threshold_sensitivity/figures")
     args = parser.parse_args()
     artifact_root = args.artifacts_dir.resolve()
