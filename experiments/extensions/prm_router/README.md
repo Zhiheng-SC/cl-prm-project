@@ -1,11 +1,14 @@
 # Alternative second-stage PRMs (exploratory)
 
-The frozen main experiment remains ReasonEval (RE) -> PathFinder. This directory
-adds three *separate* RE -> alternative-verifier comparisons on the same
-PRMBench 600/200/400 question-group split: official GenPRM-7B,
-Qwen2.5-Math-PRM-7B, and Skywork-o1-Open-PRM-Qwen-2.5-7B. Do not use the
-formal runner's `--verifiers genprm` for the official condition: it invokes the
-older 256-token analysis-only implementation.
+The frozen main experiment remains ReasonEval (RE) -> PathFinder. The course
+report evaluates Qwen2.5-Math-PRM-7B and Skywork-o1-Open-PRM-Qwen-2.5-7B as
+exploratory alternative second-stage verifiers on the same PRMBench 600/200/400
+question-group split. It also reports a post-hoc threshold-sensitivity analysis
+for PathFinder, MathPRM, and Skywork. Official GenPRM-7B runners and preliminary
+GenPRM analyses are retained for future work; no official GenPRM held-out test
+result is included in the report. Do not use the formal runner's
+`--verifiers genprm` for the official condition: it invokes the older
+256-token analysis-only implementation.
 
 ## Mario's A100 notebook
 
@@ -19,7 +22,7 @@ cells just to add these models. Its HF uploads target `formal/`; use separate
 `extensions/` paths for any extension artifacts.
 
 `experiments/extensions/prm_router/run_gpu_environment-extension.ipynb` contains the executed cells for the RE -> Extensions development and runs.
-You can follow the cells and their outputs to see an extended run with keeping the original frozen split preparation, as well as RE hyperparameters
+Its cells and outputs document extension runs that reuse the frozen split preparation and RE threshold.
 
 Only one 7B checkpoint should be loaded per process. Use the same A100 for
 timing comparisons if possible; compare separate-environment runtimes with
@@ -208,7 +211,7 @@ Run from the project checkout while the artifact checkout is available:
 
 ```bash
 python experiments/extensions/prm_router/analyze_threshold_sensitivity.py \
-  --artifacts-dir ../cl_finalproject_hg
+  --artifacts-dir ../cl-prm-artifacts
 ```
 
 The script refuses to overwrite an existing run and only permits output under

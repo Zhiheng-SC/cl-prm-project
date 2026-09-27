@@ -21,14 +21,14 @@ Held-out results on 400 test examples:
 | Expected-gain routing @ 20% PathFinder calls | 81.75% |
 | Cost-aware routing @ 20% PathFinder calls | 81.75% |
 
-The pairwise ReasonEval--PathFinder oracle reaches 92.25%. The primary protocol is now frozen and closed to further test-based tuning. Current work focuses on final descriptive diagnostics, visualization, reproducibility checks, and report writing.
-
-GenPRM remains an optional post-primary verifier-pair extension and does not affect the completed ReasonEval--PathFinder primary result.
+The pairwise ReasonEval--PathFinder oracle reaches 92.25%. The primary protocol is frozen and closed to further test-based tuning. Final descriptive analyses and figures are complete; the course report is being finalized. MathPRM and Skywork were evaluated as exploratory second-stage extensions on the same grouped splits. GenPRM code and preliminary outputs remain available for future work, but are not part of the report's held-out verifier comparisons.
 
 See:
 
 - [PRM Router proposal and protocol history](docs/proposals/prm_router.md)
 - [Formal PRM Router runbook](experiments/formal/prm_router/README.md)
+- [Alternative verifier and threshold-sensitivity runbook](experiments/extensions/prm_router/README.md)
+- [Held-out analysis scripts](experiments/formal/prm_router/analysis/README.md)
 - [PRM Router feasibility study](experiments/feasibility/prm_router/README.md)
 - [Expanded 200-example feasibility results](docs/results/prm_router_expanded_feasibility_200.md)
 
@@ -37,6 +37,10 @@ See:
 - **Code, protocol, and documentation:** this GitHub repository.
 - **Generated experiment artifacts:** [`cl-prm-team/cl-prm-artifacts`](https://huggingface.co/datasets/cl-prm-team/cl-prm-artifacts) (private during development).
 - **Internal writing workspace:** shared Overleaf project (team access only; no editable share link is stored in Git).
+
+## Reproducing the Report
+
+The [formal runbook](experiments/formal/prm_router/README.md) reconstructs the pinned question-group splits, runs the frozen RE--PathFinder experiment, and validates the reconstructed splits against the tracked manifest. The [analysis runbook](experiments/formal/prm_router/analysis/README.md) generates the main tables and figures from archived outputs. The [extension runbook](experiments/extensions/prm_router/README.md) covers MathPRM, Skywork, and the post-hoc threshold sensitivity study. Download the [generated artifacts](https://huggingface.co/datasets/cl-prm-team/cl-prm-artifacts) beside this repository as `cl-prm-artifacts` when running offline analysis scripts; use their `--artifacts-dir` or `--hf-root` option if stored elsewhere. The course paper itself is maintained in the separate writing workspace.
 
 ## Primary Study
 
@@ -71,7 +75,8 @@ cl-prm-project/
 ├── docs/                       # Proposals, literature notes, and meeting notes
 ├── experiments/
 │   ├── feasibility/            # Completed exploratory/feasibility workflows
-│   └── formal/prm_router/      # Frozen formal workflow + reserved final-analysis area
+│   ├── formal/prm_router/      # Frozen formal workflow and held-out analysis
+│   └── extensions/prm_router/  # Alternative verifiers and threshold diagnostics
 ├── src/
 │   └── cl_prm/                 # Shared data, routing, evaluation, and IO modules
 ├── data/                       # Generated local datasets, excluded from Git
@@ -95,7 +100,7 @@ the project package in editable mode with `python -m pip install -e . --no-deps 
 
 The completed formal run was executed on an NVIDIA A100-SXM4-80GB with the pinned software stack recorded in `experiments/formal/prm_router/run_gpu_environment.ipynb`. The notebook preserves the executed development and held-out workflow.
 
-The optional [alternative PRM extension](experiments/extensions/prm_router/README.md) has independent official GenPRM, Qwen Math PRM, and Skywork PRM runners. It reuses the frozen splits and RE outputs while leaving the completed RE -> PathFinder notebook and formal results intact.
+The [alternative-verifier workflow](experiments/extensions/prm_router/README.md) evaluates Qwen Math PRM and Skywork PRM on the frozen splits and RE outputs without altering the completed RE -> PathFinder experiment. Official GenPRM runners and exploratory development code remain in the repository for possible future work.
 
 For compatible cloud environments, `bash scripts/bootstrap_runpod.sh` remains the environment bootstrap entry point; see [RunPod environment](docs/runpod.md) for the pinned stack and storage/secrets policy.
 
