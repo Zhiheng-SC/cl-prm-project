@@ -35,7 +35,7 @@ See:
 ## Project Resources
 
 - **Code, protocol, and documentation:** this GitHub repository.
-- **Generated experiment artifacts:** [`cl-prm-team/cl-prm-artifacts`](https://huggingface.co/datasets/cl-prm-team/cl-prm-artifacts) (private during development).
+- **Generated experiment artifacts:** [`cl-prm-team/cl-prm-artifacts`](https://huggingface.co/datasets/cl-prm-team/cl-prm-artifacts) .
 - **Internal writing workspace:** shared Overleaf project (team access only; no editable share link is stored in Git).
 
 ## Reproducing the Report
